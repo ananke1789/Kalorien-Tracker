@@ -156,6 +156,21 @@ export function planFulfilled(tot, goals) {
   );
 }
 
+// Wochenwerte: Summen pro Tag, Durchschnitt über Tage mit Einträgen, Tage mit erfülltem Plan
+export function weekData(entries, days, goals) {
+  const perDay = days.map((key) => {
+    const list = entries.filter((e) => e.date === key);
+    const tot = sumEntries(list);
+    return { key, count: list.length, tot, ok: list.length > 0 && planFulfilled(tot, goals) };
+  });
+  const logged = perDay.filter((d) => d.count);
+  const avg = sumEntries([]);
+  for (const k of NUTRIENTS) avg[k] = logged.length ? logged.reduce((s, d) => s + d.tot[k], 0) / logged.length : 0;
+  const total = sumEntries([]);
+  for (const k of NUTRIENTS) total[k] = perDay.reduce((s, d) => s + d.tot[k], 0);
+  return { perDay, logged: logged.length, avg, total, okDays: perDay.filter((d) => d.ok).length };
+}
+
 // ---------- Sonstiges ----------
 
 const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });

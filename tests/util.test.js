@@ -78,4 +78,21 @@ t('Deutsche Sortierung', () => {
   assert.equal(u.letterOf('Öl'), 'O');
   assert.equal(u.letterOf('3-Korn'), '#');
 });
-console.log(`OK: ${n} Testgruppen bestanden`);
+t('Wochensummen', () => {
+  const days = u.weekDays('2026-10-01');
+  const p = { kcal: 100, protein: 10, fat: 5, carbs: 10 };
+  const entries = [
+    { date: '2026-09-28', per100: p, grams: 2900 }, // 2900 kcal, 290 P, 145 F -> Plan erfüllt
+    { date: '2026-09-28', per100: p, grams: 0 },
+    { date: '2026-09-30', per100: p, grams: 1000 }, // 1000 kcal
+    { date: '2026-10-05', per100: p, grams: 500 }, // nächste Woche, wird ignoriert
+  ];
+  const w = u.weekData(entries.filter((e) => days.includes(e.date)), days, { kcal: 2900, protein: 125, fat: 65 });
+  near(w.total.kcal, 3900);
+  assert.equal(w.logged, 2);
+  near(w.avg.kcal, 1950);
+  near(w.avg.protein, 195);
+  assert.equal(w.okDays, 1);
+  near(w.perDay[2].tot.kcal, 1000);
+});
+console.log(`OK: ${n} Testgruppen bestanden (inkl. Woche)`);

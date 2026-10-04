@@ -1,9 +1,10 @@
 // Auswertung: Tagesüberblick und Wochenüberblick
 import * as db from '../db.js';
-import { state, icon, render, navigate, emptyState } from '../core.js';
-import { ring, donut, COLORS } from '../charts.js';
+import { state, icon, render, navigate } from '../core.js';
+import { ring, donut, weekBars, COLORS } from '../charts.js';
 import {
   NUTRIENTS, fmtVal, fmtDate, addDays, relDayLabel, sumEntries, fullGoals, goalStatus, planFulfilled,
+  weekDays, isoWeek, todayKey, WEEKDAYS_SHORT, weekData,
 } from '../util.js';
 
 const LABEL = { kcal: 'Kalorien', protein: 'Protein', fat: 'Fett', carbs: 'Carbs' };
@@ -61,6 +62,48 @@ async function renderDay(el) {
   el.querySelector('#to-today').onclick = () => { state.date = date; navigate('today'); };
 }
 
+async function renderWeek(el) {
+  const days = weekDays(state.statsDate);
+  const entries = await db.entriesInRange(days[0], days[6]);
+  const g = fullGoals(state.goals);
+  const w = weekData(entries, days, state.goals);
+  const t = todayKey();
+  const bars = (k) => weekBars(
+    w.perDay.map((d, i) => ({ key: d.key, label: WEEKDAYS_SHORT[i], value: d.tot[k], today: d.key === t,
+      hl: k === 'kcal' ? d.ok : goalStatus(k, d.tot[k], g[k]) === 'met' || goalStatus(k, d.tot[k], g[k]) === 'exceeded' })),
+    g[k], { color: k === 'kcal' ? COLORS.kcal : COLORS[k], height: k === 'kcal' ? 170 : 120, unit: k === 'kcal' ? '' : ' g', digits: k === 'kcal' ? 0 : 0,
+      hlColor: k === 'kcal' ? COLORS.fat : COLORS[k] });
+  el.innerHTML = `
+    <div class="datebar">
+      <button class="icon-btn" data-wnav="-7" aria-label="Vorherige Woche">${icon('left')}</button>
+      <div class="date-btn" style="display:grid;justify-items:center"><span class="d1">KW ${isoWeek(days[0])}${days.includes(t) ? ' · aktuell' : ''}</span>
+        <span class="d2" style="font-size:16px">${fmtDate(days[0]).slice(0, 6)} – ${fmtDate(days[6])}</span></div>
+      <button class="icon-btn" data-wnav="7" aria-label="Nächste Woche">${icon('right')}</button>
+    </div>
+    <div class="card">
+      <svg class="watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
+      <div class="card-head"><span class="label">Plan erfüllt</span>
+        <span style="display:flex;gap:2px">${w.perDay.map((d) => icon('star', 'star-status ' + (d.ok ? 'on' : 'off'))).join('')}</span></div>
+      <hr class="rule red">
+      <div style="display:flex;align-items:baseline;gap:10px"><span class="big-num">${w.okDays}</span><span class="muted">von 7 Tagen Ziel erreicht</span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="label">Kalorien pro Tag</span><span class="small muted">Tippen für Tagesansicht</span></div>
+      <hr class="rule red">
+      ${bars('kcal')}
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="label">Tagesdurchschnitt</span><span class="small muted">${w.logged ? `über ${w.logged} Tag${w.logged > 1 ? 'e' : ''} mit Einträgen` : 'keine Einträge'}</span></div>
+      <div class="stat-grid" style="margin-top:8px">${NUTRIENTS.map((k) => `<div><span class="label">${LABEL[k]}</span><b>${fmtVal(k, w.avg[k])}${k === 'kcal' ? '' : ' g'}</b>
+        <span class="small muted">${k === 'protein' || k === 'fat' ? 'min.' : 'Ziel'} ${fmtVal(k, g[k])}</span></div>`).join('')}</div>
+    </div>
+    ${['protein', 'fat', 'carbs'].map((k) => `<div class="card">
+      <div class="card-head"><span class="label">${LABEL[k]} pro Tag</span><span class="small muted">${k === 'carbs' ? 'Ziel' : 'Mindestziel'} ${fmtVal(k, g[k])} g</span></div>
+      <hr class="rule red">${bars(k)}</div>`).join('')}`;
+  el.querySelectorAll('[data-wnav]').forEach((b) => (b.onclick = () => { state.statsDate = addDays(state.statsDate, +b.dataset.wnav); render(); }));
+  el.querySelectorAll('.wbar').forEach((b) => (b.onclick = () => { state.statsDate = b.dataset.day; mode = 'day'; render(); window.scrollTo(0, 0); }));
+}
+
 export default {
   async render(el) {
     el.innerHTML = `
@@ -72,7 +115,7 @@ export default {
     });
     const body = el.querySelector('#stats-body');
     if (mode === 'day') await renderDay(body);
-    else body.innerHTML = emptyState('Wochenüberblick', 'Folgt im nächsten Schritt.');
+    else await renderWeek(body);
   },
   setMode(m) { mode = m; },
 };

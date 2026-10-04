@@ -61,7 +61,7 @@ export function weekBars(days, goal, { color = '#26262a', height = 150, unit = '
     const fill = d.hl ? hlColor : color;
     bars += `<g class="wbar" data-day="${d.key}" style="cursor:pointer">
       <rect x="${x}" y="0" width="${bw}" height="${H}" fill="transparent"/>
-      <rect x="${(x + bw * 0.18).toFixed(1)}" y="${y(d.value).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" opacity="${d.value ? 1 : 0}"/>
+      <rect x="${(x + bw * 0.18).toFixed(1)}" y="${y(d.value).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" opacity="${d.value ? (d.hl || fill !== color || hlColor !== color ? 1 : 0.42) : 0}"/>
       ${d.value ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(y(d.value) - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#26262a">${fmt(d.value)}</text>` : ''}
       <text x="${(x + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="10" font-weight="${d.today ? 800 : 600}" fill="${d.today ? '#c8102e' : '#5f5b55'}" letter-spacing=".5">${d.label}</text>
     </g>`;

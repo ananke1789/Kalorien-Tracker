@@ -155,4 +155,19 @@ export async function goalsStatsSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [foodSteps, todaySteps, goalsStatsSteps];
+export async function weekSteps({ page, step, expect }) {
+  await step('Wochenüberblick: Diagramme, Durchschnitt, Tag antippen', async () => {
+    await go(page, 'stats');
+    await tap(page, '#stats-mode [data-mode="week"]');
+    await page.waitForSelector('.wbar');
+    expect((await page.$$('.card svg.chart')).length === 4, 'Diagramme fehlen');
+    // heute 735 kcal, morgen 348 kcal -> Woche abhängig vom Wochentag; Durchschnitt über Tage mit Einträgen
+    const txt = await page.textContent('#stats-body');
+    expect(/Tagesdurchschnitt/.test(txt) && /von 7 Tagen/.test(txt), 'Texte fehlen');
+    await page.click('.wbar >> nth=0');
+    await page.waitForSelector('.rings');
+    expect(await page.isVisible('#stats-mode [data-mode="day"].on'), 'nicht auf Tag gewechselt');
+  });
+}
+
+export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps];

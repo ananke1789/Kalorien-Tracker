@@ -7,13 +7,13 @@
 - [x] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
 - [x] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
 - [x] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
-- [ ] e) Wochenauswertung
+- [x] e) Wochenauswertung
 - [ ] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
 - [ ] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein e: Wochenüberblick in `js/views/stats.js` (`mode === 'week'`, `weekBars` aus `charts.js` existiert schon).
+Meilenstein f: PWA – `manifest.webmanifest`, `sw.js` (Cache mit Versionsnummer), `tools/make-icons.js` (PNG-Icons 192/512 + maskable ohne Abhängigkeiten), Registrierung in `app.js`, Offline-Test in E2E.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -36,6 +36,8 @@ Meilenstein e: Wochenüberblick in `js/views/stats.js` (`mode === 'week'`, `week
 - Zuletzt verwendet: Feld `lastUsed` am Lebensmittel, Top 5 beim Hinzufügen.
 - Ziele: Speichern blockiert, wenn Carbs-Rest negativ wäre.
 - Diagrammfarben: kcal Anthrazit, Protein Rot, Fett Gold, Carbs Grau.
+- Wochendurchschnitt nur über Tage mit Einträgen; "Ziel erreicht" = Plan erfüllt (s. o.).
+- Wochenbalken: Tag mit erreichtem Ziel voll/gold, sonst gedämpft.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme
