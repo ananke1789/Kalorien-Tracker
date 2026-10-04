@@ -119,8 +119,8 @@ export async function renderBackup(el) {
   el.innerHTML = `
     <div class="section-title"><span class="label">Daten & Backup</span></div>
     <div class="card form">
-      <div class="list-row"><span class="small muted">Letztes Backup</span><b>${last ? fmtDate(dateKey(new Date(last))) : 'noch keins'}</b></div>
-      <div class="list-row" style="margin-top:-12px"><span class="small muted">Dauerhafter Speicher</span><b>${persisted ? 'aktiv' : 'nicht bestätigt'}</b></div>
+      <div><div class="list-row"><span class="small muted">Letztes Backup</span><b>${last ? fmtDate(dateKey(new Date(last))) : 'noch keins'}</b></div>
+      <div class="list-row" style="border-top:1px solid var(--line)"><span class="small muted">Dauerhafter Speicher</span><b>${persisted ? 'aktiv' : 'vom Browser nicht bestätigt'}</b></div></div>
       ${(await backupHint()).replace('id="backup-hint"', 'id="backup-hint2"')}
       <p class="small muted" style="margin:0">Die Daten liegen nur auf diesem Gerät. Sichere sie regelmäßig als Datei (z. B. in Google Drive).</p>
       <div class="btn-row">

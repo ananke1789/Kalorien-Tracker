@@ -25,8 +25,8 @@ export function summaryHtml(tot, goals) {
     const pct = g[k] > 0 ? Math.min(100, (tot[k] / g[k]) * 100) : 0;
     return `<div class="sum-cell st-${st}" data-k="${k}">
       <div class="k">${SHORT[k]}</div>
-      <div class="v">${fmtVal(k, tot[k])}${k === 'kcal' ? '' : '<small> g</small>'}</div>
-      <div class="g">${k === 'protein' || k === 'fat' ? 'min. ' : 'Ziel '}${fmtVal(k, g[k])}</div>
+      <div class="v">${fmtVal(k, tot[k])}</div>
+      <div class="g">${k === 'protein' || k === 'fat' ? 'min. ' : 'Ziel '}${fmtVal(k, g[k])}${k === 'kcal' ? '' : ' g'}</div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <div class="o">${o}</div></div>`;
   }).join('');
@@ -37,7 +37,10 @@ export function summaryHtml(tot, goals) {
     <div class="sum-grid">${cells}</div></div>`;
 }
 
-const portionText = (e) => (e.portion ? `${numToInput(e.portion.count)} × ${esc(e.portion.name)} · ${fmtMacro(e.grams).replace(',0', '')} g` : `${fmtMacro(e.grams).replace(',0', '')} g`);
+const gramText = (g) => `${fmtMacro(g).replace(/,0$/, '')} g`;
+const portionText = (e) => (e.portion
+  ? `${e.portion.count === 1 ? '' : `${numToInput(e.portion.count)} × `}${esc(e.portion.name)} · ${gramText(e.grams)}`
+  : gramText(e.grams));
 
 function mealHtml(meal, entries) {
   const tot = sumEntries(entries);
@@ -72,7 +75,7 @@ export default {
         <input type="date" class="hidden-date" id="date-input" value="${date}" tabindex="-1" aria-hidden="true">
         <button class="icon-btn" data-nav="1" aria-label="Nächster Tag">${icon('right')}</button>
       </div>
-      ${date !== todayKey() ? `<button class="btn ghost small" id="go-today" style="min-height:40px;justify-self:center">Zu heute springen</button>` : ''}
+      ${date !== todayKey() ? `<button class="btn ghost small" id="go-today" style="min-height:36px;margin:-12px 0 -6px;justify-self:center;color:var(--red)">↺ Zu heute</button>` : ''}
       ${summaryHtml(tot, state.goals)}
       ${MEALS.map((m) => mealHtml(m, entries.filter((e) => e.meal === m.id))).join('')}`;
 
@@ -195,7 +198,7 @@ export function openEntryForm(opts) {
           ${edit ? '' : `<button class="btn ghost" id="change" style="margin-left:auto;min-height:44px;padding:0 10px">Ändern</button>`}</div>`;
         amountArea.innerHTML = `<form class="form" novalidate>
           ${ps.length ? `<div class="seg" id="mode"><button type="button" data-mode="gram">Gramm</button><button type="button" data-mode="portion">Portion</button></div>` : ''}
-          <div id="gram-box"><label class="field"><span>Menge</span><div class="input-wrap"><input class="input" name="grams" inputmode="decimal" autocomplete="off" value="${gramsVal}" placeholder="100"><span class="suffix">g</span></div></label></div>
+          <div id="gram-box"><label class="field"><span>Menge</span><div class="input-wrap"><input class="input" name="grams" inputmode="decimal" autocomplete="off" value="${gramsVal}" placeholder="z. B. 100"><span class="suffix">g</span></div></label></div>
           <div id="portion-box" class="grid2">
             <label class="field"><span>Portion</span><select class="input" name="portion">${ps.map((p, i) => `<option value="${i}">${esc(p.name)} (${fmtMacro(p.grams).replace(',0', '')} g)</option>`).join('')}</select></label>
             <label class="field"><span>Anzahl</span><input class="input" name="count" inputmode="decimal" autocomplete="off" value="${countVal}"></label>

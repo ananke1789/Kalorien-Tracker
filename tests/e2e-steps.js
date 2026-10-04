@@ -66,7 +66,7 @@ export async function foodSteps({ page, step, expect }) {
 }
 
 export async function todaySteps({ page, step, expect }) {
-  const sumV = async (k) => (await page.textContent(`.sum-cell[data-k="${k}"] .v`)).replace(/\s|g/g, '');
+  const sumV = async (k) => (await page.textContent(`.sum-cell[data-k="${k}"] .v`)).trim();
   await step('Eintrag in Gramm mit Live-Vorschau', async () => {
     await go(page, 'today');
     await tap(page, '[data-add="breakfast"]');
@@ -89,7 +89,7 @@ export async function todaySteps({ page, step, expect }) {
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     expect((await sumV('kcal')) === '929', 'Summe ' + (await sumV('kcal'))); // 580,5+348,3=928,8
-    expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel'), 'Portionstext');
+    expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel · 90 g'), 'Portionstext');
   });
   await step('Lebensmittel ändern verfälscht Historie nicht', async () => {
     await go(page, 'foods');

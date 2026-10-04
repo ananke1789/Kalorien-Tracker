@@ -1,6 +1,6 @@
 // Service Worker: App-Dateien offline aus dem Cache liefern.
 // Bei jeder Änderung an ausgelieferten Dateien CACHE_VERSION erhöhen!
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE = 'tagesplan-' + CACHE_VERSION;
 const FILES = [
   './',

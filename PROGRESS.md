@@ -10,10 +10,10 @@
 - [x] e) Wochenauswertung
 - [x] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
 - [x] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
-- [ ] h) Design-Feinschliff, README
+- [x] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein h: Design-Feinschliff (Screenshots aller Ansichten mit Demo-Daten prüfen) und README (GitHub Pages + Installation in Chrome/Android).
+Alle Meilensteine erledigt. Optional: Praxistest auf dem Handy, danach PR durch den Nutzer. Mögliche Erweiterungen: Barcode/Favoriten, Wasser, Notizen.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
