@@ -1,6 +1,6 @@
 // Einstiegspunkt: Daten laden, Views registrieren, Navigation
 import * as db from './db.js';
-import { state, views, navigate, loadFoods, loadGoals, closeSheet, onPopState } from './core.js';
+import { state, views, navigate, loadFoods, loadGoals, closeSheet, onPopState, toast } from './core.js';
 import today from './views/today.js';
 import foods from './views/foods.js';
 import stats from './views/stats.js';
@@ -16,6 +16,16 @@ async function boot() {
   for (const c of document.querySelectorAll('#sheet-wrap [data-close]')) c.onclick = () => closeSheet();
   window.addEventListener('popstate', onPopState);
   navigate(state.view);
+  registerSW();
+}
+
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Service Worker:', e));
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) toast('Neue Version installiert', { label: 'Neu laden', fn: () => location.reload() });
+  });
 }
 
 boot().catch((e) => {

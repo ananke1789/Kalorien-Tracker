@@ -170,4 +170,21 @@ export async function weekSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps];
+export async function offlineSteps({ page, step, expect, ctx, URL }) {
+  await step('PWA: Service Worker aktiv, App startet offline mit Daten', async () => {
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForSelector('.tab.active');
+    expect(await page.evaluate(() => !!navigator.serviceWorker.controller), 'SW kontrolliert die Seite nicht');
+    await ctx.setOffline(true);
+    await page.reload();
+    await page.waitForSelector('.tab.active');
+    await go(page, 'foods');
+    expect((await page.textContent('#food-list')).includes('Proteinriegel'), 'Daten offline nicht verfügbar');
+    await go(page, 'stats');
+    await page.waitForSelector('.rings');
+    await ctx.setOffline(false);
+  });
+}
+
+export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps, offlineSteps];

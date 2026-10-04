@@ -8,12 +8,12 @@
 - [x] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
 - [x] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
 - [x] e) Wochenauswertung
-- [ ] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
+- [x] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
 - [ ] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein f: PWA – `manifest.webmanifest`, `sw.js` (Cache mit Versionsnummer), `tools/make-icons.js` (PNG-Icons 192/512 + maskable ohne Abhängigkeiten), Registrierung in `app.js`, Offline-Test in E2E.
+Meilenstein g: `js/views/backup.js` (Export JSON-Download, Import mit Warnung, Backup-Hinweis > 14 Tage auf Heute + Ziele, Demo-Daten laden/löschen mit `demo: true`), in `goals.js` unter `#goal-extra` einbinden; `sw.js` FILES + CACHE_VERSION anpassen.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -38,6 +38,8 @@ Meilenstein f: PWA – `manifest.webmanifest`, `sw.js` (Cache mit Versionsnummer
 - Diagrammfarben: kcal Anthrazit, Protein Rot, Fett Gold, Carbs Grau.
 - Wochendurchschnitt nur über Tage mit Einträgen; "Ziel erreicht" = Plan erfüllt (s. o.).
 - Wochenbalken: Tag mit erreichtem Ziel voll/gold, sonst gedämpft.
+- Service Worker: Cache-first, versionierter Cache (`CACHE_VERSION` in `sw.js`), alte Caches werden gelöscht; Update-Toast "Neu laden".
+- `npm test` prüft auch, dass alle ausgelieferten Dateien im SW-Cache stehen.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme
