@@ -3,6 +3,7 @@ import * as db from '../db.js';
 import { state, toast, render } from '../core.js';
 import { parseNum, numToInput, fmtMacro, carbGoal, DEFAULT_GOALS } from '../util.js';
 import { COLORS, splitBar } from '../charts.js';
+import { renderBackup } from './backup.js';
 
 const field = (name, label, val, suffix, hint) => `
   <label class="field"><span>${label}</span><div class="input-wrap">
@@ -77,5 +78,6 @@ export default {
       toast('Ziele gespeichert');
       render();
     };
+    await renderBackup(el.querySelector('#goal-extra'));
   },
 };

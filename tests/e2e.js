@@ -27,7 +27,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 await new Promise((r) => setTimeout(r, 700));
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'de-DE' });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'de-DE', acceptDownloads: true });
 const page = await ctx.newPage();
 page.setDefaultTimeout(5000);
 page.on('pageerror', (e) => errors.push(e.message));

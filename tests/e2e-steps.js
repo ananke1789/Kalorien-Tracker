@@ -187,4 +187,53 @@ export async function offlineSteps({ page, step, expect, ctx, URL }) {
   });
 }
 
-export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps, offlineSteps];
+export async function backupSteps({ page, step, expect }) {
+  let file;
+  await step('Export als JSON-Datei', async () => {
+    await go(page, 'goals');
+    const [dl] = await Promise.all([page.waitForEvent('download'), tap(page, '#export')]);
+    expect(/tagesplan-backup-\d{4}-\d{2}-\d{2}\.json/.test(dl.suggestedFilename()), dl.suggestedFilename());
+    file = await dl.path();
+    const data = JSON.parse((await import('node:fs')).readFileSync(file, 'utf8'));
+    expect(data.foods.some((f) => f.name === 'Proteinriegel') && data.entries.length > 0, 'Export unvollständig');
+  });
+  await step('Demo-Daten laden und komplett löschen', async () => {
+    await go(page, 'goals');
+    const before = await page.evaluate(async () => (await (await import('./js/db.js')).getAll('foods')).length);
+    await tap(page, '#demo-load');
+    await page.waitForSelector('#demo-clear');
+    await go(page, 'foods');
+    expect((await page.textContent('#food-list')).includes('Haferflocken'), 'Demo fehlt');
+    await go(page, 'today');
+    expect((await page.$$('.entry')).length > 3, 'Demo-Einträge fehlen');
+    await go(page, 'goals');
+    await tap(page, '#demo-clear');
+    await page.click('[data-yes]');
+    await page.waitForSelector('#demo-load');
+    const after = await page.evaluate(async () => (await (await import('./js/db.js')).getAll('foods')).length);
+    expect(after === before, `Lebensmittel ${before} -> ${after}`);
+  });
+  await step('Backup-Hinweis nach 14 Tagen', async () => {
+    await page.evaluate(async () => (await import('./js/db.js')).setMeta('lastBackup', new Date(Date.now() - 20 * 864e5).toISOString()));
+    await go(page, 'foods');
+    await go(page, 'today');
+    await page.waitForSelector('#backup-hint');
+    expect((await page.textContent('#backup-hint')).includes('20 Tagen'), 'Text');
+  });
+  await step('Import mit Überschreib-Warnung', async () => {
+    await page.evaluate(async () => (await import('./js/db.js')).put('foods', { id: 'tmp', name: 'Wegwerf', kcal: 1, protein: 0, fat: 0, carbs: 0, portions: [] }));
+    await go(page, 'goals');
+    await page.setInputFiles('#import-file', file);
+    await page.waitForSelector('[data-yes]');
+    expect((await page.textContent('#sheet-body')).includes('überschrieben'), 'Warnung fehlt');
+    await page.click('[data-yes]');
+    await page.waitForTimeout(300);
+    await go(page, 'foods');
+    const txt = await page.textContent('#food-list');
+    expect(txt.includes('Proteinriegel') && !txt.includes('Wegwerf'), 'Import falsch');
+    await go(page, 'today');
+    expect(!(await page.$('#backup-hint')), 'Hinweis sollte nach Import weg sein');
+  });
+}
+
+export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps, backupSteps, offlineSteps];

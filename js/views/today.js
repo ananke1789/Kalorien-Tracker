@@ -2,6 +2,7 @@
 import * as db from '../db.js';
 import { state, loadFoods, foodById, openSheet, confirmDialog, toast, icon, render } from '../core.js';
 import { openFoodForm, matches, macroLine } from './foods.js';
+import { backupHint, exportData } from './backup.js';
 import {
   MEALS, NUTRIENTS, fmtKcal, fmtMacro, fmtVal, fmtDate, addDays, todayKey, relDayLabel, parseNum, numToInput,
   scale, entryValues, sumEntries, fullGoals, goalStatus, planFulfilled, esc, uid, NUTRIENT_LABEL,
@@ -62,7 +63,9 @@ export default {
     const entries = (await db.entriesByDate(date)).sort((a, b) => a.createdAt - b.createdAt);
     if (state.view !== 'today' || date !== state.date) return;
     const tot = sumEntries(entries);
-    el.innerHTML = `
+    const hint = await backupHint();
+    if (state.view !== 'today' || date !== state.date) return;
+    el.innerHTML = `${hint}
       <div class="datebar">
         <button class="icon-btn" data-nav="-1" aria-label="Vorheriger Tag">${icon('left')}</button>
         <button class="date-btn" id="date-pick"><span class="d1">${relDayLabel(date)}</span><span class="d2">${fmtDate(date)}</span></button>
@@ -77,6 +80,8 @@ export default {
     const di = el.querySelector('#date-input');
     el.querySelector('#date-pick').onclick = () => { try { di.showPicker(); } catch { di.focus(); di.click(); } };
     di.onchange = () => { if (di.value) { state.date = di.value; render(); } };
+    const bh = el.querySelector('#backup-hint');
+    if (bh) bh.onclick = async () => { await exportData(); render(); };
     const gt = el.querySelector('#go-today');
     if (gt) gt.onclick = () => { state.date = todayKey(); render(); };
     el.querySelectorAll('[data-add]').forEach((b) => (b.onclick = () => openEntryForm({ meal: b.dataset.add, date })));

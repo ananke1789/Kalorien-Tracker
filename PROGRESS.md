@@ -9,11 +9,11 @@
 - [x] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
 - [x] e) Wochenauswertung
 - [x] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
-- [ ] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
+- [x] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein g: `js/views/backup.js` (Export JSON-Download, Import mit Warnung, Backup-Hinweis > 14 Tage auf Heute + Ziele, Demo-Daten laden/löschen mit `demo: true`), in `goals.js` unter `#goal-extra` einbinden; `sw.js` FILES + CACHE_VERSION anpassen.
+Meilenstein h: Design-Feinschliff (Screenshots aller Ansichten mit Demo-Daten prüfen) und README (GitHub Pages + Installation in Chrome/Android).
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -40,6 +40,8 @@ Meilenstein g: `js/views/backup.js` (Export JSON-Download, Import mit Warnung, B
 - Wochenbalken: Tag mit erreichtem Ziel voll/gold, sonst gedämpft.
 - Service Worker: Cache-first, versionierter Cache (`CACHE_VERSION` in `sw.js`), alte Caches werden gelöscht; Update-Toast "Neu laden".
 - `npm test` prüft auch, dass alle ausgelieferten Dateien im SW-Cache stehen.
+- Demo-Daten: Lebensmittel/Einträge mit `demo: true` (IDs `demo-…`); Löschen entfernt nur diese. Bearbeitete/kopierte Demo-Einträge gelten als eigene.
+- Backup-Hinweis: Referenz ist letztes Backup bzw. erster Start (`firstUse`), nur wenn Lebensmittel existieren.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme
