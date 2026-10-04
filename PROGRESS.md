@@ -5,7 +5,7 @@
 ## Stand
 - [x] a) Grundgerüst, Datenmodell (IndexedDB), Navigation (Tab-Leiste)
 - [x] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
-- [ ] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
+- [x] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
 - [ ] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
 - [ ] e) Wochenauswertung
 - [ ] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
@@ -13,7 +13,7 @@
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein c: `js/views/today.js` (Datumsnavigation, Mahlzeiten, Eintrag-Dialog mit Suche/Portion/Vorschau, Kopieren, Mahlzeit von gestern, Tagesstand).
+Meilenstein d: `js/views/goals.js` (Ziele mit Live-Rest-Carbs) und `js/charts.js` + `js/views/stats.js` Tagesüberblick (Ringe, Makroverteilung).
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -32,6 +32,8 @@ Meilenstein c: `js/views/today.js` (Datumsnavigation, Mahlzeiten, Eintrag-Dialog
 - Plausibilitätswarnung bei Abweichung > max(20 kcal, 15 %).
 - Doppelte Lebensmittelnamen: Hinweis, zweites Tippen auf Speichern speichert trotzdem.
 - A–Z-Leiste erst ab > 8 Lebensmitteln.
+- "Von gestern" und Kopieren legen neue Einträge mit gleichem Snapshot an (mit Rückgängig-Toast).
+- Zuletzt verwendet: Feld `lastUsed` am Lebensmittel, Top 5 beim Hinzufügen.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme

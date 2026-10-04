@@ -38,9 +38,15 @@ try {
     }
   });
 
-  const extra = (await import('./e2e-steps.js').catch(() => null))?.default;
-  if (extra) await extra({ page, step, expect, ctx, URL });
+  const steps = await import('./e2e-steps.js');
+  for (const fn of Object.values(steps)) await fn({ page, step, expect, ctx, URL });
 
+  if (process.env.SHOTS) { // Screenshots: SHOTS=verzeichnis node tests/e2e.js
+    for (const t of ['today', 'foods', 'stats', 'goals']) {
+      await page.click(`.tab[data-tab="${t}"]`); await page.waitForTimeout(300);
+      await page.screenshot({ path: path.join(process.env.SHOTS, `${t}.png`), fullPage: true });
+    }
+  }
   await step('Keine JS-Fehler', async () => expect(errors.length === 0, errors.join(' | ')));
 } finally {
   await browser.close();

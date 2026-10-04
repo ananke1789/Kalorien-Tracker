@@ -59,3 +59,67 @@ export default async function ({ page, step, expect }) {
     expect(!(await page.textContent('#food-list')).includes('Banane'), 'nicht gelöscht');
   });
 }
+
+export async function todaySteps({ page, step, expect }) {
+  const sumV = async (k) => (await page.textContent(`.sum-cell[data-k="${k}"] .v`)).replace(/\s|g/g, '');
+  await step('Eintrag in Gramm mit Live-Vorschau', async () => {
+    await page.click('.tab[data-tab="today"]');
+    await page.click('[data-add="breakfast"]');
+    await page.fill('#pick-q', 'riegel');
+    await page.click('.pick:has-text("Proteinriegel")');
+    await page.fill('#sheet-body [name=grams]', '150');
+    const pv = await page.textContent('#preview');
+    expect(pv.includes('581') && pv.includes('50,0'), 'Vorschau falsch: ' + pv); // 387*1,5=580,5 -> 581; 33,3*1,5=49,95 -> 50,0
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect((await sumV('kcal')) === '581', 'Tagessumme kcal ' + (await sumV('kcal')));
+  });
+  await step('Eintrag als Portion (2 × 1 Riegel = 90 g), zuletzt verwendet oben', async () => {
+    await page.click('[data-add="snacks"]');
+    expect((await page.textContent('.pick-head')).includes('Zuletzt'), 'Zuletzt verwendet fehlt');
+    await page.click('.pick:has-text("Proteinriegel")');
+    await page.click('#mode [data-mode="portion"]');
+    await page.fill('#sheet-body [name=count]', '2');
+    expect((await page.textContent('#preview')).includes('348'), 'Portionsvorschau'); // 387*0,9=348,3
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect((await sumV('kcal')) === '929', 'Summe ' + (await sumV('kcal'))); // 580,5+348,3=928,8
+    expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel'), 'Portionstext');
+  });
+  await step('Lebensmittel ändern verfälscht Historie nicht', async () => {
+    await page.click('.tab[data-tab="foods"]');
+    await page.click('.food:has-text("Proteinriegel")');
+    await page.fill('#sheet-body [name=kcal]', '500');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    await page.click('.tab[data-tab="today"]');
+    expect((await sumV('kcal')) === '929', 'Snapshot verletzt');
+  });
+  await step('Eintrag bearbeiten, kopieren, löschen', async () => {
+    await page.click('[data-meal="breakfast"] .entry');
+    await page.fill('#sheet-body [name=grams]', '100');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect((await sumV('kcal')) === '735', 'Bearbeiten ' + (await sumV('kcal'))); // 387+348,3
+    await page.click('[data-meal="breakfast"] .entry');
+    await page.click('#copy');
+    await page.click('#sheet-body [data-quick="1"]');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    await page.click('[data-nav="1"]');
+    await page.waitForSelector('.date-btn .d1:has-text("Morgen")');
+    expect((await sumV('kcal')) === '387', 'Kopie fehlt');
+    await page.click('[data-meal="breakfast"] .entry');
+    await page.click('#del');
+    await page.click('[data-yes]');
+    await page.waitForTimeout(200);
+    expect((await sumV('kcal')) === '0', 'Löschen fehlgeschlagen');
+  });
+  await step('Mahlzeit von gestern übernehmen', async () => {
+    await page.click('[data-yday="snacks"]');
+    await page.waitForTimeout(200);
+    expect((await sumV('kcal')) === '348', 'Übernahme ' + (await sumV('kcal')));
+    await page.click('[data-nav="-1"]');
+    await page.waitForTimeout(150);
+  });
+}
