@@ -1,9 +1,14 @@
 // Fachliche E2E-Schritte (werden von tests/e2e.js geladen)
-export default async function ({ page, step, expect }) {
+// Klick nach Mittig-Scrollen (FAB/Toast verdecken sonst den unteren Rand)
+export const tap = async (page, sel) => { await page.evaluate(() => (document.getElementById('toast').hidden = true)); await page.waitForSelector(sel); await page.$eval(sel, (e) => e.scrollIntoView({ block: 'center' })); await page.click(sel); };
+// Tab wechseln und auf gerenderten Inhalt warten
+export const go = async (page, t) => { await page.click(`.tab[data-tab="${t}"]`); await page.waitForSelector(`#view-${t} > *`); await page.waitForTimeout(80); };
+
+export async function foodSteps({ page, step, expect }) {
   const fill = async (name, v) => page.fill(`#sheet-body [name="${name}"]`, v);
 
   await step('Lebensmittel anlegen (mit Komma, Portion, Plausibilitätshinweis)', async () => {
-    await page.click('.tab[data-tab="foods"]');
+    await go(page, 'foods');
     await page.click('.fab');
     await fill('name', 'Proteinriegel');
     await fill('kcal', '900');
@@ -24,7 +29,7 @@ export default async function ({ page, step, expect }) {
   await step('Validierung blockiert leere Eingaben', async () => {
     await page.click('.fab');
     await page.click('#sheet-body button[type=submit]');
-    expect(await page.isVisible('#err'), 'Fehlermeldung fehlt');
+    await page.waitForSelector('#err', { state: 'visible', timeout: 2000 });
     await page.click('#sheet-wrap .sheet-head [data-close]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
   });
@@ -63,8 +68,8 @@ export default async function ({ page, step, expect }) {
 export async function todaySteps({ page, step, expect }) {
   const sumV = async (k) => (await page.textContent(`.sum-cell[data-k="${k}"] .v`)).replace(/\s|g/g, '');
   await step('Eintrag in Gramm mit Live-Vorschau', async () => {
-    await page.click('.tab[data-tab="today"]');
-    await page.click('[data-add="breakfast"]');
+    await go(page, 'today');
+    await tap(page, '[data-add="breakfast"]');
     await page.fill('#pick-q', 'riegel');
     await page.click('.pick:has-text("Proteinriegel")');
     await page.fill('#sheet-body [name=grams]', '150');
@@ -75,7 +80,7 @@ export async function todaySteps({ page, step, expect }) {
     expect((await sumV('kcal')) === '581', 'Tagessumme kcal ' + (await sumV('kcal')));
   });
   await step('Eintrag als Portion (2 × 1 Riegel = 90 g), zuletzt verwendet oben', async () => {
-    await page.click('[data-add="snacks"]');
+    await tap(page, '[data-add="snacks"]');
     expect((await page.textContent('.pick-head')).includes('Zuletzt'), 'Zuletzt verwendet fehlt');
     await page.click('.pick:has-text("Proteinriegel")');
     await page.click('#mode [data-mode="portion"]');
@@ -87,39 +92,67 @@ export async function todaySteps({ page, step, expect }) {
     expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel'), 'Portionstext');
   });
   await step('Lebensmittel ändern verfälscht Historie nicht', async () => {
-    await page.click('.tab[data-tab="foods"]');
+    await go(page, 'foods');
     await page.click('.food:has-text("Proteinriegel")');
     await page.fill('#sheet-body [name=kcal]', '500');
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
-    await page.click('.tab[data-tab="today"]');
+    await go(page, 'today');
     expect((await sumV('kcal')) === '929', 'Snapshot verletzt');
   });
   await step('Eintrag bearbeiten, kopieren, löschen', async () => {
-    await page.click('[data-meal="breakfast"] .entry');
+    await tap(page, '[data-meal="breakfast"] .entry');
     await page.fill('#sheet-body [name=grams]', '100');
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     expect((await sumV('kcal')) === '735', 'Bearbeiten ' + (await sumV('kcal'))); // 387+348,3
-    await page.click('[data-meal="breakfast"] .entry');
+    await tap(page, '[data-meal="breakfast"] .entry');
     await page.click('#copy');
     await page.click('#sheet-body [data-quick="1"]');
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
-    await page.click('[data-nav="1"]');
+    await tap(page, '[data-nav="1"]');
     await page.waitForSelector('.date-btn .d1:has-text("Morgen")');
     expect((await sumV('kcal')) === '387', 'Kopie fehlt');
-    await page.click('[data-meal="breakfast"] .entry');
+    await tap(page, '[data-meal="breakfast"] .entry');
     await page.click('#del');
     await page.click('[data-yes]');
     await page.waitForTimeout(200);
     expect((await sumV('kcal')) === '0', 'Löschen fehlgeschlagen');
   });
   await step('Mahlzeit von gestern übernehmen', async () => {
-    await page.click('[data-yday="snacks"]');
+    await tap(page, '[data-yday="snacks"]');
     await page.waitForTimeout(200);
     expect((await sumV('kcal')) === '348', 'Übernahme ' + (await sumV('kcal')));
-    await page.click('[data-nav="-1"]');
+    await tap(page, '[data-nav="-1"]');
     await page.waitForTimeout(150);
   });
 }
+
+export async function goalsStatsSteps({ page, step, expect }) {
+  await step('Ziele: Rest-Carbs live, speichern', async () => {
+    await go(page, 'goals');
+    expect((await page.textContent('#carbs-out')) === '453,8', 'Standard-Carbs ' + (await page.textContent('#carbs-out')));
+    await page.fill('[name=kcal]', '2500');
+    await page.fill('[name=protein]', '150,5');
+    expect((await page.textContent('#carbs-out')) === '328,3', 'Live-Carbs ' + (await page.textContent('#carbs-out'))); // (2500-602-585)/4=328,25
+    await tap(page, '#reset');
+    await page.fill('[name=kcal]', '2000');
+    await tap(page, '#goal-form button[type=submit]');
+    await page.waitForTimeout(150);
+    await go(page, 'today');
+    expect((await page.textContent('.sum-cell[data-k="kcal"] .g')).includes('2.000'), 'Ziel nicht übernommen');
+  });
+  await step('Tagesüberblick: Ringe und Verteilung', async () => {
+    await go(page, 'stats');
+    expect((await page.$$('.ring')).length === 4, 'Ringe fehlen');
+    // heute 735 kcal von 2000 -> 37 %
+    expect((await page.textContent('.ring:first-child')).includes('37%'), 'kcal-Ring');
+    await go(page, 'goals');
+    await tap(page, '#reset');
+    await tap(page, '#goal-form button[type=submit]');
+    await page.waitForTimeout(150);
+  });
+}
+
+export const ORDER = [foodSteps, todaySteps, goalsStatsSteps];

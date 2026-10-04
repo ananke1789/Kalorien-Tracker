@@ -30,7 +30,10 @@ export async function loadGoals() {
 export function navigate(view, opts = {}) {
   if (opts.date) state.statsDate = opts.date;
   state.view = view;
-  for (const s of document.querySelectorAll('.view')) s.hidden = s.dataset.view !== view;
+  for (const s of document.querySelectorAll('main > .view')) {
+    s.hidden = s.dataset.view !== view;
+    if (s.hidden) s.innerHTML = ''; // keine doppelten IDs in versteckten Views
+  }
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === view);
   closeSheet(true);
   render();
@@ -51,6 +54,7 @@ export function openSheet({ title, html, onMount, onClose }) {
   const wrap = document.getElementById('sheet-wrap');
   const body = document.getElementById('sheet-body');
   const replacing = !!sheetClose;
+  document.getElementById('toast').hidden = true;
   if (replacing) closeSheet(true);
   document.getElementById('sheet-title').textContent = title;
   body.innerHTML = html;

@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import * as steps from './e2e-steps.js';
+const { go } = steps;
 
 const require = createRequire(import.meta.url);
 let chromium;
@@ -16,7 +18,10 @@ const URL = `http://localhost:${PORT}/`;
 const errors = [];
 let failed = 0;
 const step = async (name, fn) => {
-  try { await fn(); console.log('✓', name); } catch (e) { failed++; console.log('✗', name, '\n   ', e.message.split('\n')[0]); }
+  try { await fn(); console.log('✓', name); } catch (e) {
+    failed++; console.log('✗', name, '\n   ', (process.env.VERBOSE ? e.message : e.message.split('\n')[0]));
+    if (process.env.SHOTS) await page.screenshot({ path: path.join(process.env.SHOTS, `fail-${failed}.png`) }).catch(() => {});
+  }
 };
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 
@@ -24,6 +29,7 @@ await new Promise((r) => setTimeout(r, 700));
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'de-DE' });
 const page = await ctx.newPage();
+page.setDefaultTimeout(5000);
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
@@ -33,17 +39,17 @@ try {
 
   await step('Navigation über alle Tabs', async () => {
     for (const t of ['foods', 'stats', 'goals', 'today']) {
-      await page.click(`.tab[data-tab="${t}"]`);
+      await go(page, t);
       expect(await page.isVisible(`#view-${t}`), `View ${t} nicht sichtbar`);
     }
   });
 
-  const steps = await import('./e2e-steps.js');
-  for (const fn of Object.values(steps)) await fn({ page, step, expect, ctx, URL });
+  
+  for (const fn of steps.ORDER) await fn({ page, step, expect, ctx, URL });
 
   if (process.env.SHOTS) { // Screenshots: SHOTS=verzeichnis node tests/e2e.js
     for (const t of ['today', 'foods', 'stats', 'goals']) {
-      await page.click(`.tab[data-tab="${t}"]`); await page.waitForTimeout(300);
+      await go(page, t); await page.waitForTimeout(300);
       await page.screenshot({ path: path.join(process.env.SHOTS, `${t}.png`), fullPage: true });
     }
   }

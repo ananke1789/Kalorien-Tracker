@@ -6,14 +6,14 @@
 - [x] a) Grundgerüst, Datenmodell (IndexedDB), Navigation (Tab-Leiste)
 - [x] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
 - [x] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
-- [ ] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
+- [x] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
 - [ ] e) Wochenauswertung
 - [ ] f) PWA: Manifest, Service Worker, Icons (Skript), Offline
 - [ ] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein d: `js/views/goals.js` (Ziele mit Live-Rest-Carbs) und `js/charts.js` + `js/views/stats.js` Tagesüberblick (Ringe, Makroverteilung).
+Meilenstein e: Wochenüberblick in `js/views/stats.js` (`mode === 'week'`, `weekBars` aus `charts.js` existiert schon).
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -34,10 +34,16 @@ Meilenstein d: `js/views/goals.js` (Ziele mit Live-Rest-Carbs) und `js/charts.js
 - A–Z-Leiste erst ab > 8 Lebensmitteln.
 - "Von gestern" und Kopieren legen neue Einträge mit gleichem Snapshot an (mit Rückgängig-Toast).
 - Zuletzt verwendet: Feld `lastUsed` am Lebensmittel, Top 5 beim Hinzufügen.
+- Ziele: Speichern blockiert, wenn Carbs-Rest negativ wäre.
+- Diagrammfarben: kcal Anthrazit, Protein Rot, Fett Gold, Carbs Grau.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme
 - keine
+
+## Testhinweise
+- Inaktive Views werden beim Tabwechsel geleert (sonst doppelte IDs wie `#err`).
+- E2E-Schritte in `tests/e2e-steps.js`, Reihenfolge über `ORDER`; `tap()` scrollt mittig und blendet Toasts aus.
 
 ## Lokal testen
 ```
