@@ -46,22 +46,27 @@ export async function render() {
 
 // ---------- Bottom-Sheet ----------
 let sheetClose = null;
+let ignorePop = 0;
 export function openSheet({ title, html, onMount, onClose }) {
   const wrap = document.getElementById('sheet-wrap');
   const body = document.getElementById('sheet-body');
-  if (sheetClose) closeSheet(true);
+  const replacing = !!sheetClose;
+  if (replacing) closeSheet(true);
   document.getElementById('sheet-title').textContent = title;
   body.innerHTML = html;
   wrap.hidden = false;
   body.scrollTop = 0;
-  history.pushState({ sheet: true }, '');
+  if (!(history.state && history.state.sheet)) history.pushState({ sheet: true }, '');
   const close = (fromPop = false) => {
     if (!sheetClose) return;
     sheetClose = null;
     wrap.hidden = true;
     body.innerHTML = '';
     if (onClose) onClose();
-    if (!fromPop && history.state && history.state.sheet) history.back();
+    // Verlaufseintrag nur entfernen, wenn nicht direkt ein neues Sheet folgt
+    if (!fromPop) setTimeout(() => {
+      if (!sheetClose && history.state && history.state.sheet) { ignorePop++; history.back(); }
+    }, 60);
   };
   sheetClose = close;
   if (onMount) onMount(body, close);
@@ -70,7 +75,11 @@ export function openSheet({ title, html, onMount, onClose }) {
 export function closeSheet(fromPop = false) {
   if (sheetClose) sheetClose(fromPop);
 }
-export const sheetOpen = () => !!sheetClose;
+// Zurück-Taste (Android) schließt das Sheet
+export function onPopState() {
+  if (ignorePop) { ignorePop--; return; }
+  closeSheet(true);
+}
 
 export function confirmDialog(text, { ok = 'Löschen', danger = true, title = 'Bestätigen' } = {}) {
   return new Promise((resolve) => {

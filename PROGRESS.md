@@ -4,7 +4,7 @@
 
 ## Stand
 - [x] a) Grundgerüst, Datenmodell (IndexedDB), Navigation (Tab-Leiste)
-- [ ] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
+- [x] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
 - [ ] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
 - [ ] d) Ziele-Ansicht + Tagesauswertung (Ringe, Makroverteilung)
 - [ ] e) Wochenauswertung
@@ -13,7 +13,7 @@
 - [ ] h) Design-Feinschliff, README
 
 ## Nächster Schritt
-Meilenstein b: `js/views/foods.js` (Liste + Formular im Bottom-Sheet).
+Meilenstein c: `js/views/today.js` (Datumsnavigation, Mahlzeiten, Eintrag-Dialog mit Suche/Portion/Vorschau, Kopieren, Mahlzeit von gestern, Tagesstand).
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -30,6 +30,8 @@ Meilenstein b: `js/views/foods.js` (Liste + Formular im Bottom-Sheet).
 - "Plan erfüllt": Protein ≥ Ziel, Fett ≥ Ziel, kcal zwischen 90 % und 110 % des Ziels.
 - kcal/Carbs ab > 110 % des Ziels dezent (grau, kursiv) markiert; Protein/Fett-Übererfüllung immer positiv (Gold).
 - Plausibilitätswarnung bei Abweichung > max(20 kcal, 15 %).
+- Doppelte Lebensmittelnamen: Hinweis, zweites Tippen auf Speichern speichert trotzdem.
+- A–Z-Leiste erst ab > 8 Lebensmitteln.
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme

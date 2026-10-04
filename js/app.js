@@ -1,6 +1,6 @@
 // Einstiegspunkt: Daten laden, Views registrieren, Navigation
 import * as db from './db.js';
-import { state, views, navigate, loadFoods, loadGoals, closeSheet, sheetOpen } from './core.js';
+import { state, views, navigate, loadFoods, loadGoals, closeSheet, onPopState } from './core.js';
 import today from './views/today.js';
 import foods from './views/foods.js';
 import stats from './views/stats.js';
@@ -14,7 +14,7 @@ async function boot() {
   document.getElementById('boot').remove();
   for (const t of document.querySelectorAll('.tab')) t.onclick = () => navigate(t.dataset.tab);
   for (const c of document.querySelectorAll('#sheet-wrap [data-close]')) c.onclick = () => closeSheet();
-  window.addEventListener('popstate', () => { if (sheetOpen()) closeSheet(true); });
+  window.addEventListener('popstate', onPopState);
   navigate(state.view);
 }
 
