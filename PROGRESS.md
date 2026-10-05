@@ -1,6 +1,6 @@
 # PROGRESS – Tagesplan (Kalorien- & Makro-Tracker PWA)
 
-**Arbeitszweig:** `claude/amazing-bardeen-vfo9eo` (nur pushen, kein PR – den erstellt der Nutzer)
+**Arbeitszweig:** `claude/amazing-bardeen-vfo9eo` – nach jeder fertigen Änderung Pull Request nach `main` anlegen (Nutzer merged)
 
 ## Stand (Phase 1, gemergt als PR #1)
 - [x] a) Grundgerüst, Datenmodell (IndexedDB), Navigation (Tab-Leiste)
