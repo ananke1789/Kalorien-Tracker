@@ -7,7 +7,7 @@ import { MAIN_PLAN_IDS } from '../training/plans.js';
 import { renderWorkout } from './workout.js';
 
 const SUBS = [['start', 'Starten'], ['history', 'Verlauf'], ['stats', 'Statistik'], ['plans', 'Pläne']];
-export const tview = { sub: 'start', startDate: null, editId: null, planEdit: null };
+export const tview = { sub: 'start', startDate: null, editId: null, planEdit: null, resumeShown: false };
 const extra = {}; // weitere Bereiche: name -> render(el)
 export const registerTrainingSub = (name, fn) => (extra[name] = fn);
 
@@ -17,6 +17,7 @@ async function startPlan(planId) {
   const w = newWorkout(plan, tstate.catalog, tstate.history, tview.startDate || todayKey());
   await saveActive(w);
   tview.startDate = null;
+  tview.resumeShown = true; // frisch gestartet, kein "fortgesetzt"-Hinweis
   render();
   window.scrollTo(0, 0);
 }
@@ -35,8 +36,11 @@ function openSpecialMenu() {
 async function renderStart(el) {
   const active = await getActive();
   if (active) {
+    const resumed = !tview.resumeShown;
+    tview.resumeShown = true;
     return renderWorkout(el, active, {
       mode: 'active',
+      resumed,
       onFinish: async (w) => {
         const complete = workoutProgress(w).complete;
         await finishWorkout(w);

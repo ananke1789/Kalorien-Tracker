@@ -239,3 +239,35 @@ export function usedKeys(history) {
   for (const w of history) if (w.status === 'done') for (const g of Object.values(setsByKey(w))) out[g.key] = g.name;
   return out;
 }
+
+// ---------- Schritt-für-Schritt-Modus ----------
+// Schritte = Blöcke (Einzelübung oder Superset) in Plan-Reihenfolge; Abschnittstitel hängen am folgenden Schritt.
+export function workoutSteps(w) {
+  const has = new Set(w.exercises.map((e) => e.uid));
+  const steps = [];
+  let section = null;
+  for (const b of planBlocks(w.planSnapshot.items.filter((i) => i.kind === 'section' || has.has(i.uid)))) {
+    if (b.kind === 'section') { section = b.title; continue; }
+    steps.push({ section, block: b, uids: b.items.map((i) => i.uid) });
+    section = null;
+  }
+  return steps;
+}
+// Schritt erledigt: alle Übungen mit "Weiter" abgeschlossen oder übersprungen
+export function stepDone(w, step) {
+  return step.uids.every((u) => { const ex = w.exercises.find((e) => e.uid === u); return !ex || ex.skipped || !!ex.doneAt; });
+}
+// Wiedereinstieg: erster nicht erledigter Schritt (sonst Abschluss = steps.length)
+export function resumeStep(w) {
+  const steps = workoutSteps(w);
+  const i = steps.findIndex((s) => !stepDone(w, s));
+  return i < 0 ? steps.length : i;
+}
+// Schritt abschließen: Übungen markieren, zum nächsten offenen Schritt
+export function completeStep(w, pos, now = Date.now()) {
+  const steps = workoutSteps(w);
+  for (const u of steps[pos]?.uids || []) { const ex = w.exercises.find((e) => e.uid === u); if (ex && !ex.skipped) ex.doneAt = now; }
+  const next = steps.findIndex((s, i) => i > pos && !stepDone(w, s));
+  w.pos = next < 0 ? resumeStep(w) : next;
+  return w.pos;
+}

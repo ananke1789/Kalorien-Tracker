@@ -2,6 +2,9 @@
 // Klick nach Mittig-Scrollen (FAB/Toast verdecken sonst den unteren Rand)
 export const tap = async (page, sel) => { await page.evaluate(() => (document.getElementById('toast').hidden = true)); await page.waitForSelector(sel); await page.$eval(sel, (e) => e.scrollIntoView({ block: 'center' })); await page.click(sel); };
 // Tab wechseln und auf gerenderten Inhalt warten
+// Laufendes Training: zum Abschluss-Schritt bzw. zu einer Übung springen
+export const toEnd = async (page) => { await page.waitForTimeout(150); await page.click('.step.end'); await page.waitForSelector('[data-act="finish"]'); };
+export const showStep = async (page, name) => { await page.waitForTimeout(150); await page.click(`.step[data-names*="${name}"]`); await page.waitForSelector(`.tex:has(.tex-name:text-is("${name}"))`); };
 export const go = async (page, t) => { await page.click(`.tab[data-tab="${t}"]`); await page.waitForSelector(`#view-${t} > *`); await page.waitForTimeout(80); };
 
 export async function foodSteps({ page, step, expect }) {
@@ -323,6 +326,7 @@ export async function migrationSteps({ page, step, expect, ctx, URL }) {
     await p3.evaluate(async () => (await import('./js/db.js')).put('workouts', { id: 'keep', status: 'done', date: '2026-01-01', planName: 'X', exercises: [], planSnapshot: { items: [] }, catalogSnap: {} }));
     await go(p3, 'goals');
     await p3.setInputFiles('#import-file', file);
+    await p3.waitForSelector('[data-yes]');
     expect((await p3.textContent('#sheet-body')).includes('Trainingsdaten bleiben erhalten'), 'Hinweis Training fehlt');
     await p3.click('[data-yes]');
     await p3.waitForTimeout(300);
@@ -338,6 +342,8 @@ export async function migrationSteps({ page, step, expect, ctx, URL }) {
 export async function trainingSteps({ page, step, expect }) {
   const ex = (name) => `.tex:has(.tex-name:text-is("${name}"))`;
   const setIn = (name, n, f) => `${ex(name)} .set >> nth=${n} >> [data-f="${f}"]`;
+  const show = async (name) => { await tap(page, `.step[data-names*="${name}"]`); await page.waitForSelector(ex(name)); };
+  const discard = async () => { await toEnd(page); await tap(page, '[data-act="discard"]'); await page.click('[data-yes]'); await page.waitForSelector('.big-btn'); };
   await step('Training: Startansicht und Sondertraining-Menü', async () => {
     await go(page, 'training');
     const btns = await page.$$eval('.big-btn b', (els) => els.map((e) => e.textContent));
@@ -347,38 +353,60 @@ export async function trainingSteps({ page, step, expect }) {
     await page.click('#sheet-wrap .sheet-head [data-close]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
   });
-  await step('Training: Upper Body erfassen (G, Skalen, KG, Variante), Autosave + Fortsetzen', async () => {
+  await step('Training Schritt für Schritt: nur aktuelle Übung sichtbar, Fertig speichert und geht weiter', async () => {
     await tap(page, '[data-plan="upper"]');
     await page.waitForSelector('.tex');
-    const nos = await page.$$eval('.tex-no', (els) => els.map((e) => e.textContent).join(','));
-    expect(nos === '1,2,3,4,5,6,7,8,B1,B2,9,10', 'Nummern ' + nos);
-    expect(await page.isVisible('.superset .label:text("Superset B")'), 'Superset-Block');
-    expect(await page.isVisible('.section-title:has-text("Griffkraft")'), 'Abschnitt');
+    expect((await page.$$('.step')).length === 12, 'Schritte ' + (await page.$$('.step')).length); // 11 + Abschluss
+    expect((await page.$$('.tex')).length === 1, 'mehr als eine Übung im DOM');
+    expect((await page.textContent('.w-head')).includes('Übung 1 von 11'), 'Schrittanzeige');
     expect((await page.textContent(ex('Seitheben Kabelzug') + ' .tex-target')).includes('2 × 12-20'), 'Ziel');
     await page.fill(setIn('Seitheben Kabelzug', 0, 'weight'), '10');
     await page.fill(setIn('Seitheben Kabelzug', 0, 'reps'), '15');
     await page.click(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="form"][data-v="4"]`);
     await page.click(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="effort"][data-v="3"]`);
-    // KG: Klimmzüge mit Stufe + Zusatzgewicht
+    await tap(page, '[data-act="next"]');
+    await page.waitForSelector(ex('Schulterübung'));
+    expect(await page.isVisible('.step.done'), 'Schritt 1 nicht abgehakt');
+    const saved = await page.evaluate(async () => (await (await import('./js/db.js')).get('active', 'current')).workout);
+    expect(saved.pos === 1 && saved.exercises[0].doneAt && saved.exercises[0].sets[0].weight === 10, 'nicht sofort gespeichert');
+    // Superset als ein Schritt, Abschnittstitel
+    await show('Bizeps-Curls Kabel');
+    expect((await page.$$('.tex')).length === 2 && await page.isVisible('.superset .label:text("Superset B")'), 'Superset-Schritt');
+    await show('Reverse Curls');
+    expect(await page.isVisible('.section-title:has-text("Griffkraft")'), 'Abschnitt');
+  });
+  await step('Training: KG mit Zusatzgewicht, Variante, Absturz -> weiter bei nächster offener Übung', async () => {
+    await show('Klimmzüge weit');
     await page.fill(setIn('Klimmzüge weit', 0, 'reps'), '8');
     await page.click(`${ex('Klimmzüge weit')} .set >> nth=0 >> [data-act="extra"]`);
     await page.fill(setIn('Klimmzüge weit', 0, 'extra'), '2,5');
-    // Variante Untere Brust -> Dip-Maschine (G)
+    await tap(page, '[data-act="next"]');
+    await page.waitForSelector(ex('Obere Brust')); // weiter mit der nächsten offenen Übung danach
+    await show('Untere Brust');
     await page.selectOption(`${ex('Untere Brust')} select[data-act="variant"]`, 'dip-maschine');
     await page.waitForSelector(`${ex('Untere Brust')} [data-f="weight"]`);
     await page.fill(setIn('Untere Brust', 0, 'weight'), '40');
     await page.fill(setIn('Untere Brust', 0, 'reps'), '10');
+    await tap(page, '[data-act="next"]');
+    await page.waitForSelector(ex('Bizeps-Curls Kabel'));
     expect((await page.textContent('#w-progress')).includes('3 / '), 'Fortschritt ' + (await page.textContent('#w-progress')));
-    await page.waitForTimeout(400);
+    // Absturz simulieren: Seite hart neu laden (ohne Abschließen)
     await page.reload();
     await go(page, 'training');
     await page.waitForSelector('.tex');
-    expect((await page.inputValue(setIn('Seitheben Kabelzug', 0, 'weight'))) === '10', 'Autosave Gewicht');
-    expect((await page.inputValue(setIn('Klimmzüge weit', 0, 'extra'))) === '2,5', 'Autosave Zusatz');
-    expect(await page.isVisible(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="form"][data-v="4"].on`), 'Skala gespeichert');
-    expect((await page.$eval(`${ex('Untere Brust')} select[data-act="variant"]`, (e) => e.value)) === 'dip-maschine', 'Variante gespeichert');
+    expect(await page.isVisible(ex('Bizeps-Curls Kabel')), 'nicht dort weiter, wo aufgehört'); // nach Untere Brust
+    expect((await page.$$('.step.done')).length === 3, 'erledigte Schritte ' + (await page.$$('.step.done')).length);
+    await page.waitForSelector('#toast:has-text("fortgesetzt")');
+    await show('Seitheben Kabelzug');
+    expect((await page.inputValue(setIn('Seitheben Kabelzug', 0, 'weight'))) === '10', 'Wert verloren');
+    expect(await page.isVisible(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="form"][data-v="4"].on`), 'Skala verloren');
+    await show('Klimmzüge weit');
+    expect((await page.inputValue(setIn('Klimmzüge weit', 0, 'extra'))) === '2,5', 'Zusatz verloren');
+    await show('Untere Brust');
+    expect((await page.$eval(`${ex('Untere Brust')} select[data-act="variant"]`, (e) => e.value)) === 'dip-maschine', 'Variante verloren');
   });
   await step('Training: eigene Variante dauerhaft anlegen', async () => {
+    await show('Rudern');
     await page.selectOption(`${ex('Rudern')} select[data-act="variant"]`, '__new');
     await page.fill('#sheet-body [name=name]', 'T-Bar Rudern');
     await page.click('#sheet-body button[type=submit]');
@@ -388,20 +416,28 @@ export async function trainingSteps({ page, step, expect }) {
     expect(saved.includes('T-Bar Rudern'), 'Variante nicht im Katalog');
   });
   await step('Training: Satz hinzufügen/entfernen, überspringen, abschließen', async () => {
+    await show('Seitheben Kabelzug');
     await page.fill(setIn('Seitheben Kabelzug', 1, 'weight'), '10');
     await page.fill(setIn('Seitheben Kabelzug', 1, 'reps'), '20');
     await page.fill(setIn('Seitheben Kabelzug', 0, 'reps'), '20');
+    await show('Mittlere Brust');
     await tap(page, `${ex('Mittlere Brust')} [data-act="add-set"]`);
     expect((await page.$$(`${ex('Mittlere Brust')} .set`)).length === 3, 'Satz hinzufügen');
     await tap(page, `${ex('Mittlere Brust')} .set >> nth=2 >> [data-act="del-set"]`);
     expect((await page.$$(`${ex('Mittlere Brust')} .set`)).length === 2, 'Satz entfernen');
+    await show('Rudern');
     await tap(page, `${ex('Rudern')} [data-act="skip"]`);
     expect(await page.isVisible(`${ex('Rudern')}.skipped`), 'überspringen');
+    await page.waitForTimeout(200);
+    await page.click('.step.end');
+    await page.waitForSelector('[data-act="finish"]');
+    const sum = await page.textContent('#t-body');
+    expect(sum.includes('übersprungen') && sum.includes('noch offen'), 'Abschluss-Übersicht: ' + sum.replace(/\s+/g, ' ').slice(0, 400));
     await page.fill('[data-act="note"]', 'Gute Einheit');
     await tap(page, '[data-act="finish"]');
     await page.waitForSelector('#t-sub [data-sub="history"].on');
   });
-  await step('Training: letzte Werte, Übernehmen per Tipp, Progressionshinweis, letzte Stufe', async () => {
+  await step('Training: letzte Werte, Übernehmen per Tipp, Progressionshinweis, letzte Variante', async () => {
     await tap(page, '#t-sub [data-sub="start"]');
     await tap(page, '[data-plan="upper"]');
     await page.waitForSelector('.tex');
@@ -411,41 +447,42 @@ export async function trainingSteps({ page, step, expect }) {
     expect((await page.getAttribute(setIn('Seitheben Kabelzug', 0, 'weight'), 'placeholder')) === '10', 'Platzhalter');
     await tap(page, `${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-act="use-last"]`);
     expect((await page.inputValue(setIn('Seitheben Kabelzug', 0, 'reps'))) === '20', 'Übernehmen');
+    await show('Untere Brust');
     expect((await page.$eval(`${ex('Untere Brust')} select[data-act="variant"]`, (e) => e.value)) === 'dip-maschine', 'zuletzt genutzte Variante');
+    await show('Klimmzüge weit');
     expect(!(await page.textContent(ex('Klimmzüge weit'))).includes('Progression'), 'kein Hinweis bei Klimmzügen');
-    await tap(page, '[data-act="discard"]');
-    await page.click('[data-yes]');
-    await page.waitForSelector('.big-btn');
+    await discard();
   });
-  await step('Training: Sondertraining 4g (pro Seite) und 4a (optional eingeklappt, Stern)', async () => {
+  await step('Training: Sondertraining 4g (pro Seite) und 4b/4a (Stern, optional eingeklappt)', async () => {
     await tap(page, '#special');
     await page.click('#sheet-body [data-plan="4g"]');
     await page.waitForSelector('.tex');
+    expect((await page.textContent(ex('Seitheben Kurzhantel'))).includes('kg pro Hand'), 'pro Hand');
+    await show('Rückwärts-Ausfallschritte KH');
     const heads = await page.$$eval(`${ex('Rückwärts-Ausfallschritte KH')} .set-head b`, (els) => els.map((e) => e.textContent).join(','));
     expect(heads === 'Satz 1 L,Satz 1 R,Satz 2 L,Satz 2 R', heads);
-    expect((await page.textContent(ex('Seitheben Kurzhantel'))).includes('kg pro Hand'), 'pro Hand');
-    await tap(page, '[data-act="discard"]');
-    await page.click('[data-yes]');
-    await page.waitForSelector('.big-btn');
+    await discard();
     await tap(page, '#special');
     await page.click('#sheet-body [data-plan="4b"]');
     await page.waitForSelector('.tex');
-    // alle Sätze füllen -> Stern
-    for (const inp of await page.$$('[data-f="weight"]')) await inp.fill('20');
-    for (const inp of await page.$$('[data-f="reps"]')) await inp.fill('12');
+    // alle Schritte nacheinander ausfüllen -> Stern
+    for (let i = 0; i < 6; i++) {
+      for (const inp of await page.$$('[data-f="weight"]')) await inp.fill('20');
+      for (const inp of await page.$$('[data-f="reps"]')) await inp.fill('12');
+      await tap(page, '[data-act="next"]');
+      await page.waitForTimeout(150);
+    }
+    expect(await page.isVisible('.step.end.cur'), 'nicht beim Abschluss');
     expect(await page.isVisible('#w-progress .star-status.on'), 'Stern fehlt');
-    await tap(page, '[data-act="discard"]');
-    await page.click('[data-yes]');
-    await page.waitForSelector('.big-btn');
+    await tap(page, '[data-act="discard"]'); await page.click('[data-yes]'); await page.waitForSelector('.big-btn');
     await tap(page, '#special');
     await page.click('#sheet-body [data-plan="4a"]');
     await page.waitForSelector('.tex');
+    await show('Dead Hang');
     expect(await page.isVisible(`${ex('Dead Hang')}.closed`), 'optional nicht eingeklappt');
     await tap(page, `${ex('Dead Hang')} [data-act="open"]`);
     expect(await page.isVisible(`${ex('Dead Hang')} [data-f="secs"]`), 'Z-Eingabe');
-    await tap(page, '[data-act="discard"]');
-    await page.click('[data-yes]');
-    await page.waitForSelector('.big-btn');
+    await discard();
   });
 }
 
@@ -482,9 +519,11 @@ export async function historySteps({ page, step, expect }) {
     await page.waitForSelector('.tex');
     await page.fill('.tex >> nth=0 >> [data-f="weight"] >> nth=0', '60');
     await page.fill('.tex >> nth=0 >> [data-f="reps"] >> nth=0', '12');
+    await toEnd(page);
     await tap(page, '[data-act="finish"]');
     await page.waitForSelector('.hist');
-    expect((await page.$$('.hist')).length === 2, 'zweites Training fehlt');
+    await page.waitForFunction(() => document.querySelectorAll('.hist').length === 2, null, { timeout: 3000 }).catch(() => {});
+    expect((await page.$$('.hist')).length === 2, 'zweites Training fehlt: ' + (await page.$$('.hist')).length);
     await tap(page, '.hist:has-text("Lower Body")');
     await page.click('#wd-del');
     await page.click('[data-yes]');
@@ -573,10 +612,13 @@ export async function planEditorSteps({ page, step, expect }) {
     await tap(page, '#t-sub [data-sub="start"]');
     await tap(page, '[data-plan="lower"]');
     await page.waitForSelector('.tex');
+    await showStep(page, 'Beinstrecker');
     expect((await page.$$(`${item('Beinstrecker')} .set`)).length === 0 && await page.isVisible(`${item('Beinstrecker')}.closed`), 'optional eingeklappt');
     expect((await page.textContent(item('Beinstrecker'))).includes('4 × 10-15') && (await page.textContent(item('Beinstrecker'))).includes('langsam'), 'Plan übernommen');
+    await showStep(page, "Farmer's Walk / Hold");
     expect(await page.isVisible(`${item("Farmer's Walk / Hold")} [data-f="secs"]`), 'neue Übung im Training');
     expect(await page.isVisible('.section-title:has-text("Neuer Abschnitt")'), 'Abschnitt im Training');
+    await toEnd(page);
     await tap(page, '[data-act="discard"]');
     await page.click('[data-yes]');
     await page.waitForSelector('.big-btn');
