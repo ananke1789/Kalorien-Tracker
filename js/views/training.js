@@ -7,7 +7,7 @@ import { MAIN_PLAN_IDS } from '../training/plans.js';
 import { renderWorkout } from './workout.js';
 
 const SUBS = [['start', 'Starten'], ['history', 'Verlauf'], ['stats', 'Statistik'], ['plans', 'Pläne']];
-export const tview = { sub: 'start', startDate: null, editId: null };
+export const tview = { sub: 'start', startDate: null, editId: null, planEdit: null };
 const extra = {}; // weitere Bereiche: name -> render(el)
 export const registerTrainingSub = (name, fn) => (extra[name] = fn);
 
@@ -70,7 +70,7 @@ export default {
     if (!tstate.catalog.length) await loadTraining();
     el.innerHTML = `<div class="seg" id="t-sub">${SUBS.map(([id, l]) => `<button data-sub="${id}" class="${tview.sub === id ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div id="t-body" class="view" style="animation:none"></div>`;
-    el.querySelectorAll('#t-sub button').forEach((b) => (b.onclick = () => { tview.sub = b.dataset.sub; tview.editId = null; render(); window.scrollTo(0, 0); }));
+    el.querySelectorAll('#t-sub button').forEach((b) => (b.onclick = () => { tview.sub = b.dataset.sub; tview.editId = null; tview.planEdit = null; render(); window.scrollTo(0, 0); }));
     const body = el.querySelector('#t-body');
     if (tview.sub === 'start') await renderStart(body);
     else if (extra[tview.sub]) await extra[tview.sub](body);

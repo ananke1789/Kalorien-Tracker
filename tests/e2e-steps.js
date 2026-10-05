@@ -527,4 +527,93 @@ export async function tstatsSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, tstatsSteps, backupSteps, offlineSteps];
+export async function planEditorSteps({ page, step, expect }) {
+  const item = (name) => `.tex:has(.tex-name:text-is("${name}"))`;
+  await step('Pläne: bearbeiten (Sätze, Hinweis, optional, Superset, Reihenfolge, Abschnitt, Übung hinzufügen)', async () => {
+    await go(page, 'training');
+    await tap(page, '#t-sub [data-sub="plans"]');
+    expect((await page.$$('[data-plan]')).length === 10, 'Planliste');
+    await tap(page, '[data-plan="lower"]');
+    await page.waitForSelector('#pe-addex');
+    await tap(page, `${item('Beinstrecker')} [data-tg]`);
+    await page.fill(`${item('Beinstrecker')} [data-pf="sets"]`, '4');
+    await page.fill(`${item('Beinstrecker')} [data-pf="note"]`, 'langsam');
+    await page.check(`${item('Beinstrecker')} [data-pf="optional"]`);
+    await page.waitForTimeout(150);
+    await page.selectOption(`${item('Beinstrecker')} [data-pf="group"]`, 'A');
+    await page.waitForTimeout(150);
+    expect((await page.textContent(`${item('Beinstrecker')} .tex-target`)).includes('4 × 10-15 · optional'), 'Zusammenfassung');
+    expect((await page.textContent(`${item('Beinstrecker')} .tex-no`)) === 'A1', 'Superset-Label');
+    // Waden nach unten
+    await tap(page, `${item('Waden')} .tex-actions [data-mv="1"]`);
+    await page.waitForTimeout(300);
+    const names = await page.$$eval('.tex-name', (els) => els.slice(0, 2).map((e) => e.textContent).join(','));
+    expect(names === 'Beinpresse (Füße hoch),Waden', 'Reihenfolge ' + names);
+    await tap(page, '#pe-addsec');
+    await tap(page, '#pe-addex');
+    await page.fill('#pe-q', 'farmer');
+    await page.click('#sheet-body .pick[data-id="farmers"]');
+    await page.waitForSelector(item("Farmer's Walk / Hold"));
+    await page.fill(`${item("Farmer's Walk / Hold")} [data-pf="reps"]`, '40-60 s');
+    await page.waitForTimeout(500);
+    // neues Training nutzt den geänderten Plan
+    await tap(page, '#t-sub [data-sub="start"]');
+    await tap(page, '[data-plan="lower"]');
+    await page.waitForSelector('.tex');
+    expect((await page.$$(`${item('Beinstrecker')} .set`)).length === 0 && await page.isVisible(`${item('Beinstrecker')}.closed`), 'optional eingeklappt');
+    expect((await page.textContent(item('Beinstrecker'))).includes('4 × 10-15') && (await page.textContent(item('Beinstrecker'))).includes('langsam'), 'Plan übernommen');
+    expect(await page.isVisible(`${item("Farmer's Walk / Hold")} [data-f="secs"]`), 'neue Übung im Training');
+    expect(await page.isVisible('.section-title:has-text("Neuer Abschnitt")'), 'Abschnitt im Training');
+    await tap(page, '[data-act="discard"]');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+  });
+  await step('Pläne: Snapshot – alte Trainings unverändert; Plan auf Standard zurücksetzen', async () => {
+    await tap(page, '#t-sub [data-sub="history"]');
+    await tap(page, '.hist:has-text("Upper Body")');
+    const before = await page.textContent('#sheet-body');
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await tap(page, '#t-sub [data-sub="plans"]');
+    await tap(page, '[data-plan="upper"]');
+    await tap(page, `${item('Seitheben Kabelzug')} [data-del]`);
+    await page.click('[data-yes]');
+    await page.waitForTimeout(300);
+    await tap(page, '#t-sub [data-sub="history"]');
+    await tap(page, '.hist:has-text("Upper Body")');
+    expect((await page.textContent('#sheet-body')) === before && before.includes('Seitheben Kabelzug'), 'Snapshot verletzt');
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await tap(page, '#t-sub [data-sub="plans"]');
+    await tap(page, '[data-plan="upper"]');
+    expect(!(await page.$(item('Seitheben Kabelzug'))), 'nicht entfernt');
+    await tap(page, '#pe-reset');
+    await page.click('[data-yes]');
+    await page.waitForSelector(item('Seitheben Kabelzug')); // Editor zeigt wieder den Standard
+    await tap(page, '#pe-back');
+  });
+  await step('Katalog: Übung bearbeiten (Variante + Stufen) und neue Übung anlegen', async () => {
+    await tap(page, '#cat-open');
+    await page.fill('#pe-q', 'beinbeuger');
+    await page.click('#sheet-body .pick[data-id="beinbeuger"]');
+    await page.waitForSelector('#ef-vars');
+    await page.click('#ef-addv');
+    await page.fill('#ef-vars [data-vi="2"] [data-vf="name"]', 'Nordic Curls');
+    await page.selectOption('#ef-vars [data-vi="2"] [data-vf="type"]', 'KG');
+    await page.fill('#ef-vars [data-vi="2"] [data-vf="stages"]', 'Band\nohne Band');
+    await page.fill('#ef-vars [data-vi="2"] [data-vf="nextAt"]', '8');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    const v = await page.evaluate(async () => (await (await import('./js/db.js')).get('exercises', 'beinbeuger')).variants[2]);
+    expect(v.name === 'Nordic Curls' && v.type === 'KG' && v.stages.length === 2 && v.nextAt === 8, JSON.stringify(v));
+    await tap(page, '#cat-open');
+    await page.fill('#pe-q', 'Sled Push');
+    await page.click('#sheet-body .pick[data-new]');
+    await page.waitForSelector('#ef-vars');
+    await page.selectOption('#ef-vars [data-vf="type"]', 'Z');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    const all = await page.evaluate(async () => (await (await import('./js/db.js')).getAll('exercises')).filter((x) => x.name === 'Sled Push'));
+    expect(all.length === 1 && all[0].variants[0].type === 'Z' && all[0].group === 'Eigene', JSON.stringify(all));
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, tstatsSteps, planEditorSteps, backupSteps, offlineSteps];
