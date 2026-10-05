@@ -297,6 +297,15 @@ main { padding: 12px 16px calc(var(--tab-h) + var(--sab) + 96px); max-width: 640
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; }
 
 /* ---------- Training ---------- */
+.stepper { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+.stepper::-webkit-scrollbar { display: none; }
+.step { flex: 0 0 auto; min-width: 44px; height: 44px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--line-2); background: #fff; font-weight: 800; font-size: 14px; display: grid; place-items: center; color: var(--ink-2); }
+.step svg { width: 18px; height: 18px; }
+.step.done { background: var(--gold-soft); border-color: var(--gold); color: #6d5528; }
+.step.cur { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.step.end { color: var(--red); }
+.step.end.cur { background: var(--red); border-color: var(--red); color: #fff; }
+.step-nav .btn.primary { flex: 1; min-height: 56px; font-size: 16px; }
 .big-choice { display: grid; gap: 10px; }
 .big-btn {
   position: relative; overflow: hidden; min-height: 76px; padding: 14px 16px; border-radius: var(--r); border: 1px solid var(--line-2);

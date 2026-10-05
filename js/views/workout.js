@@ -3,6 +3,7 @@ import { openSheet, confirmDialog, toast, icon } from '../core.js';
 import { esc, fmtDate, fmtNum, parseNum, numToInput, uid } from '../util.js';
 import {
   resolve, planBlocks, itemLabels, lastPerformance, progressionHint, makeSets, setFilled, workoutProgress, typeOf, TYPE_LABEL,
+  workoutSteps, stepDone, resumeStep, completeStep,
 } from '../training/model.js';
 import { tstate, saveActive, saveWorkout, saveExercise, exById } from '../training/store.js';
 
@@ -105,7 +106,66 @@ export function renderWorkout(el, w, opts) {
     </div>`;
   };
 
+  const blockHtml = (b) => {
+    const inner = b.items.map((it) => exHtml(exByUid(it.uid))).join('');
+    return b.kind === 'superset' ? `<div class="superset"><span class="label red">Superset ${esc(b.group)}</span>${inner}</div>` : inner;
+  };
+  const stepName = (st) => st.uids.map((u) => w.catalogSnap[exByUid(u).exId]?.name || '').join(' + ');
+
+  let firstDraw = true;
+  // Laufendes Training: Schritt für Schritt (nur der aktuelle Block im Speicher/DOM)
+  const drawSteps = () => {
+    const steps = workoutSteps(w);
+    // Wiedereinstieg: gespeicherte Position (nächste Übung nach der zuletzt abgeschlossenen), sonst erste offene
+    if (w.pos == null || w.pos < 0 || w.pos > steps.length || (firstDraw && opts.resumed && w.pos < steps.length && stepDone(w, steps[w.pos]))) w.pos = resumeStep(w);
+    firstDraw = false;
+    const pos = w.pos;
+    const doneCount = steps.filter((st) => stepDone(w, st)).length;
+    const stepper = steps.map((st, i) => {
+      const done = stepDone(w, st);
+      const lab = st.block.kind === 'superset' ? st.block.group : labels[st.uids[0]] || i + 1;
+      return `<button class="step ${done ? 'done' : ''} ${i === pos ? 'cur' : ''}" data-act="goto" data-pos="${i}" data-names="${esc(stepName(st))}" aria-label="${esc(stepName(st))}">${done ? icon('check') : esc(lab)}</button>`;
+    }).join('') + `<button class="step end ${pos === steps.length ? 'cur' : ''}" data-act="goto" data-pos="${steps.length}" data-names="Abschluss" aria-label="Abschluss">${icon('star')}</button>`;
+    let body;
+    if (pos < steps.length) {
+      const st = steps[pos];
+      const nextI = steps.findIndex((x, i) => i > pos && !stepDone(w, x));
+      body = `${st.section ? `<div class="section-title"><span class="label">${esc(st.section)}</span></div>` : ''}
+        ${blockHtml(st.block)}
+        <div class="btn-row step-nav">
+          ${pos > 0 ? `<button class="btn" data-act="goto" data-pos="${pos - 1}" style="flex:0 0 auto">${icon('left')}</button>` : ''}
+          <button class="btn primary" data-act="next">${icon('check')}${nextI < 0 ? 'Fertig – zum Abschluss' : 'Fertig – weiter'}</button>
+        </div>
+        <p class="small muted" style="margin:0;text-align:center">${nextI < 0 ? 'Danach: Notiz und Training abschließen' : `Als Nächstes: ${esc(stepName(steps[nextI]))}`}<br>„Fertig“ speichert die Übung sofort.</p>`;
+    } else {
+      body = `<div class="card" style="padding:0">${steps.map((st, i) => `<button class="hist" data-act="goto" data-pos="${i}">
+          <div><div class="nm">${esc(stepName(st))}</div><div class="sub">${st.uids.map((u) => { const ex = exByUid(u); if (ex.skipped) return 'übersprungen'; const n = ex.sets.filter((x) => setFilled(x, typeOf(w, ex, x))).length; return `${n} ${n === 1 ? 'Satz' : 'Sätze'}`; }).join(' + ')}</div></div>
+          <div class="kc">${stepDone(w, st) ? icon('check', 'star-status on') : '<small>offen</small>'}</div></button>`).join('')}</div>
+        ${doneCount < steps.length ? `<div class="hint">${steps.length - doneCount} Übung${steps.length - doneCount > 1 ? 'en' : ''} noch offen – du kannst trotzdem abschließen.</div>` : ''}
+        <div class="card form">
+          <label class="field"><span>Notiz zum Training</span><textarea class="input" data-act="note" placeholder="z. B. Energie, Schlaf, Besonderheiten">${esc(w.note || '')}</textarea></label>
+        </div>
+        <button class="btn primary block" data-act="finish">${icon('check')}Training abschließen</button>
+        <button class="btn danger block" data-act="discard">Training verwerfen</button>`;
+    }
+    el.innerHTML = `
+      <div class="card w-head">
+        <svg class="watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
+        <span class="label red">Laufendes Training · ${pos < steps.length ? `Übung ${pos + 1} von ${steps.length}` : 'Abschluss'}</span>
+        <div class="w-title">${esc(w.planName)}</div>
+        <div class="stepper" id="stepper">${stepper}</div>
+        <div class="w-progress" id="w-progress">${progressHtml()}</div>
+        ${pos === 0 ? `<label class="field"><span>Datum</span><input class="input" type="date" data-act="date" value="${w.date}"></label>` : ''}
+        ${pos === 0 && w.planSnapshot.note ? `<div class="hint">${esc(w.planSnapshot.note)}</div>` : ''}
+      </div>
+      ${body}`;
+    // aktuellen Schritt in der Leiste mittig zeigen (nur die Leiste scrollen, nicht die Karte)
+    const bar = el.querySelector('#stepper'), cur = el.querySelector('.step.cur');
+    if (bar && cur) bar.scrollLeft = cur.offsetLeft - bar.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2;
+  };
+
   const draw = () => {
+    if (opts.mode === 'active') return drawSteps();
     const blocks = planBlocks(w.planSnapshot.items.filter((i) => i.kind === 'section' || exByUid(i.uid)));
     el.innerHTML = `
       <div class="card w-head">
@@ -157,6 +217,7 @@ export function renderWorkout(el, w, opts) {
   el.onchange = async (e) => {
     const t = e.target, act = t.dataset.act;
     if (act === 'date') { if (t.value) { w.date = t.value; persist(true); } return; }
+    if (t.dataset.f) { persist(true); return; } // Feld verlassen: sofort speichern
     if (!act || !t.dataset.ex) return; // Zahlenfelder: nur oninput, kein Neuaufbau (sonst geht der nächste Tipp verloren)
     const ex = exByUid(t.dataset.ex);
     if (act === 'variant') {
@@ -247,7 +308,20 @@ export function renderWorkout(el, w, opts) {
       ex.sets = ex.sets.filter((x) => x !== s);
     } else if (act === 'skip') ex.skipped = !ex.skipped;
     else if (act === 'open') ex.open = true;
-    else if (act === 'finish') {
+    else if (act === 'goto') {
+      w.pos = +b.dataset.pos;
+      await persist(true);
+      draw();
+      window.scrollTo(0, 0);
+      return;
+    } else if (act === 'next') {
+      completeStep(w, w.pos);
+      await persist(true); // Übung sofort dauerhaft speichern
+      toast('Übung gespeichert');
+      draw();
+      window.scrollTo(0, 0);
+      return;
+    } else if (act === 'finish') {
       await persist(true);
       return opts.onFinish(w);
     } else if (act === 'discard') {
@@ -264,6 +338,10 @@ export function renderWorkout(el, w, opts) {
 
   flushPending = () => persist(true);
   draw();
+  if (opts.resumed && opts.mode === 'active') {
+    const steps = workoutSteps(w);
+    if (w.pos < steps.length) toast(`Training fortgesetzt – weiter bei ${stepName(steps[w.pos])}`);
+  }
 }
 
 // Beim Verlassen/Ausblenden der App sofort speichern

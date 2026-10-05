@@ -146,4 +146,26 @@ t('Fortschritt / Stern: alle geplanten Sätze eingetragen', () => {
   assert.ok(m.workoutProgress(w).complete);
   assert.equal(m.countSets(w), 2 + 3 + 3 + 3 + 3 + 1 + 4); // ohne übersprungene Beinpresse
 });
-console.log(`OK: ${n} Trainings-Testgruppen bestanden`);
+t('Schritt-für-Schritt: Schritte, Weiter, Wiedereinstieg nach Absturz', () => {
+  const w = m.newWorkout(plan('cali'), cat, [], '2026-10-01');
+  const steps = m.workoutSteps(w);
+  assert.deepEqual(steps.map((s) => s.uids.length), [2, 2, 2, 2, 2, 2]); // 6 Supersets
+  assert.equal(steps[0].section, 'Schulterblock (Priorität)');
+  assert.equal(steps[1].section, null);
+  assert.equal(m.resumeStep(w), 0);
+  assert.equal(m.completeStep(w, 0), 1);
+  assert.ok(w.exercises[0].doneAt && w.exercises[1].doneAt);
+  // "Absturz": gespeicherten Stand neu laden -> weiter bei Schritt 2
+  const reloaded = JSON.parse(JSON.stringify(w));
+  assert.equal(m.resumeStep(reloaded), 1);
+  // Schritt 3 vorgezogen, dann Schritt 2 -> nächster offener ist 4
+  m.completeStep(reloaded, 2);
+  assert.equal(m.completeStep(reloaded, 1), 3);
+  for (let i = 3; i < steps.length; i++) m.completeStep(reloaded, i);
+  assert.equal(m.resumeStep(reloaded), steps.length); // alles erledigt -> Abschluss
+  const up = m.newWorkout(plan('upper'), cat, [], '2026-10-01');
+  assert.equal(m.workoutSteps(up).length, 11); // 8 einzeln + Superset B + 2 einzeln
+  up.exercises[0].skipped = true;
+  assert.equal(m.resumeStep(up), 1);
+});
+console.log(`OK: ${n} Trainings-Testgruppen (inkl. Schritte) bestanden`);
