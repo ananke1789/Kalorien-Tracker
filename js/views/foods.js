@@ -1,13 +1,15 @@
-// Lebensmittel: alphabetische Liste, A–Z, Suche, Formular mit Portionen
+// Lebensmittel: alphabetische Liste, A–Z, Suche, Formular (Typ pro 100 g oder pro Portion)
 import * as db from '../db.js';
 import { state, loadFoods, openSheet, confirmDialog, toast, icon, emptyState, render } from '../core.js';
-import { parseNum, fmtKcal, fmtMacro, numToInput, plausibility, letterOf, norm, uid, esc, compareDe } from '../util.js';
+import { parseNum, fmtKcal, numToInput, plausibility, letterOf, norm, uid, esc, compareDe, macroText, NUTRIENTS } from '../util.js';
 
 let query = '';
 const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
 
 export const matches = (f, q) => !q || norm(f.name).includes(norm(q));
-export const macroLine = (f) => `P ${fmtMacro(f.protein)} · F ${fmtMacro(f.fat)} · C ${fmtMacro(f.carbs)}`;
+export const macroLine = (f) => macroText(f);
+// "100 g" bzw. Portionsname
+export const basisLabel = (f) => (f.type === 'portion' ? f.portionName || '1 Portion' : '100 g');
 
 function listHtml(foods) {
   if (!state.foods.length) return emptyState('Noch keine Lebensmittel', 'Lege dein erstes Lebensmittel an – Werte pro 100 g.');
@@ -16,10 +18,10 @@ function listHtml(foods) {
   for (const f of foods) {
     const l = letterOf(f.name);
     if (l !== cur) { cur = l; html += `<div class="letter" id="L-${l === '#' ? 'num' : l}">${l}</div>`; }
-    const p = f.portions?.length ? ` · ${f.portions.length} Portion${f.portions.length > 1 ? 'en' : ''}` : '';
+    const portion = f.type === 'portion' ? ` <span class="badge red">${esc(basisLabel(f))}</span>` : '';
     html += `<button class="food" data-id="${f.id}">
-      <div><div class="nm">${esc(f.name)}${f.demo ? ' <span class="badge">Demo</span>' : ''}</div><div class="sub">${macroLine(f)}${p}</div></div>
-      <div class="kc">${fmtKcal(f.kcal)}<small>kcal/100 g</small></div></button>`;
+      <div><div class="nm">${esc(f.name)}${portion}${f.demo ? ' <span class="badge">Demo</span>' : ''}</div><div class="sub">${macroLine(f)}</div></div>
+      <div class="kc">${fmtKcal(f.kcal)}<small>kcal/${esc(basisLabel(f))}</small></div></button>`;
   }
   return html;
 }
@@ -76,35 +78,30 @@ export default {
 };
 
 // ---------- Formular ----------
-const numField = (name, label, val, suffix) => `
-  <label class="field"><span>${label}</span><div class="input-wrap">
+const LABELS = { kcal: 'Kalorien', fat: 'Fett', carbs: 'Carbs', protein: 'Protein' };
+const numField = (name, val, suffix) => `
+  <label class="field"><span>${LABELS[name]}</span><div class="input-wrap">
   <input class="input" name="${name}" inputmode="decimal" autocomplete="off" value="${val == null ? '' : numToInput(val)}"><span class="suffix">${suffix}</span></div></label>`;
-const portionRow = (p = {}) => `
-  <div class="portion-row">
-    <input class="input" name="pname" placeholder="z. B. 1 Riegel" value="${esc(p.name || '')}" autocomplete="off">
-    <div class="input-wrap"><input class="input" name="pgrams" inputmode="decimal" placeholder="45" value="${p.grams ? numToInput(p.grams) : ''}"><span class="suffix">g</span></div>
-    <button type="button" class="icon-btn" data-delp aria-label="Portion entfernen">${icon('close')}</button>
-  </div>`;
 
 // onSaved(food) optional, z. B. aus dem Eintrag-Dialog
 export function openFoodForm(food, onSaved, presetName = '') {
   const isNew = !food;
-  const f = food || { name: presetName, kcal: null, protein: null, fat: null, carbs: null, portions: [] };
+  const f = food || { name: presetName, type: 'per100', kcal: null, fat: null, carbs: null, protein: null, portionName: '' };
+  let type = f.type === 'portion' ? 'portion' : 'per100';
   openSheet({
     title: isNew ? 'Neues Lebensmittel' : 'Lebensmittel bearbeiten',
     html: `<form class="form" novalidate>
       <label class="field"><span>Name</span><input class="input" name="name" value="${esc(f.name)}" autocomplete="off" maxlength="80" required></label>
-      <div class="label">Nährwerte pro 100 g</div>
+      <div class="seg" id="type-seg"><button type="button" data-type="per100">pro 100 g</button><button type="button" data-type="portion">pro Portion</button></div>
+      <label class="field" id="pname-box"><span>Portionsname</span><input class="input" name="portionName" value="${esc(f.portionName || '')}" placeholder="z. B. 1 Riegel, 1 Shake" autocomplete="off" maxlength="40"></label>
+      <div class="label" id="basis-label"></div>
       <div class="grid2">
-        ${numField('kcal', 'Kalorien', f.kcal, 'kcal')}
-        ${numField('protein', 'Protein', f.protein, 'g')}
-        ${numField('fat', 'Fett', f.fat, 'g')}
-        ${numField('carbs', 'Carbs', f.carbs, 'g')}
+        ${numField('kcal', f.kcal, 'kcal')}
+        ${numField('fat', f.fat, 'g')}
+        ${numField('carbs', f.carbs, 'g')}
+        ${numField('protein', f.protein, 'g')}
       </div>
       <div class="hint warn" id="plaus" hidden></div>
-      <div class="card-head"><span class="label">Portionen (optional)</span></div>
-      <div class="form" id="portions" style="gap:8px">${(f.portions || []).map(portionRow).join('')}</div>
-      <button type="button" class="btn gold" id="addp">${icon('plus')}Portion hinzufügen</button>
       <p class="error" id="err" hidden></p>
       <div class="sheet-actions btn-row">
         ${isNew ? '' : `<button type="button" class="btn danger" id="del">Löschen</button>`}
@@ -112,23 +109,30 @@ export function openFoodForm(food, onSaved, presetName = '') {
       </div></form>`,
     onMount(el, close) {
       const form = el.querySelector('form');
-      const pl = el.querySelector('#portions');
       const val = (n) => parseNum(form.elements[n].value);
+      const drawType = () => {
+        el.querySelectorAll('#type-seg button').forEach((b) => b.classList.toggle('on', b.dataset.type === type));
+        el.querySelector('#pname-box').hidden = type !== 'portion';
+        el.querySelector('#basis-label').textContent = type === 'portion' ? 'Nährwerte pro Portion' : 'Nährwerte pro 100 g';
+      };
+      el.querySelector('#type-seg').onclick = (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        type = b.dataset.type;
+        drawType();
+        if (type === 'portion' && !form.elements.portionName.value) form.elements.portionName.focus();
+      };
+      drawType();
       const checkPlaus = () => {
-        const v = { kcal: val('kcal'), protein: val('protein'), fat: val('fat'), carbs: val('carbs') };
+        const v = Object.fromEntries(NUTRIENTS.map((k) => [k, val(k)]));
         const box = el.querySelector('#plaus');
         if (Object.values(v).some((x) => !Number.isFinite(x))) { box.hidden = true; return; }
         const p = plausibility(v);
         box.hidden = p.ok;
-        box.textContent = `Hinweis: Aus den Makros ergeben sich ca. ${fmtKcal(p.calc)} kcal (4 × Protein + 4 × Carbs + 9 × Fett). Bitte Werte prüfen – Speichern ist trotzdem möglich.`;
+        box.textContent = `Hinweis: Aus den Makros ergeben sich ca. ${fmtKcal(p.calc)} kcal (9 × Fett + 4 × Carbs + 4 × Protein). Bitte Werte prüfen – Speichern ist trotzdem möglich.`;
       };
       form.addEventListener('input', checkPlaus);
       checkPlaus();
-      el.querySelector('#addp').onclick = () => {
-        pl.insertAdjacentHTML('beforeend', portionRow());
-        pl.lastElementChild.querySelector('input').focus();
-      };
-      pl.addEventListener('click', (e) => { if (e.target.closest('[data-delp]')) e.target.closest('.portion-row').remove(); });
       if (isNew && !presetName) setTimeout(() => form.elements.name.focus(), 250);
 
       form.onsubmit = async (e) => {
@@ -137,22 +141,17 @@ export function openFoodForm(food, onSaved, presetName = '') {
         const errs = [];
         const name = form.elements.name.value.trim();
         if (!name) { errs.push('Bitte einen Namen eingeben.'); form.elements.name.classList.add('invalid'); }
+        const portionName = form.elements.portionName.value.trim();
+        if (type === 'portion' && !portionName) { errs.push('Bitte einen Portionsnamen eingeben (z. B. „1 Riegel“).'); form.elements.portionName.classList.add('invalid'); }
+        const per100 = type === 'per100';
         const vals = {};
-        for (const [k, max] of [['kcal', 1000], ['protein', 100], ['fat', 100], ['carbs', 100]]) {
+        for (const k of NUTRIENTS) {
+          const max = k === 'kcal' ? (per100 ? 1000 : 5000) : (per100 ? 100 : 1000);
           const v = val(k);
-          if (!Number.isFinite(v) || v < 0 || v > max) { form.elements[k].classList.add('invalid'); errs.push(`${k === 'kcal' ? 'Kalorien' : k === 'protein' ? 'Protein' : k === 'fat' ? 'Fett' : 'Carbs'}: Zahl zwischen 0 und ${max} angeben.`); }
+          if (!Number.isFinite(v) || v < 0 || v > max) { form.elements[k].classList.add('invalid'); errs.push(`${LABELS[k]}: Zahl zwischen 0 und ${fmtKcal(max)} angeben.`); }
           vals[k] = v;
         }
-        if (!errs.length && vals.protein + vals.fat + vals.carbs > 100.5) errs.push('Protein + Fett + Carbs können zusammen nicht über 100 g pro 100 g liegen.');
-        const portions = [];
-        for (const row of pl.querySelectorAll('.portion-row')) {
-          const n = row.querySelector('[name=pname]'), g = row.querySelector('[name=pgrams]');
-          if (!n.value.trim() && !g.value.trim()) continue;
-          const grams = parseNum(g.value);
-          if (!n.value.trim()) { n.classList.add('invalid'); errs.push('Portion: Bitte einen Namen eingeben.'); }
-          if (!Number.isFinite(grams) || grams <= 0 || grams > 5000) { g.classList.add('invalid'); errs.push('Portion: Gramm als Zahl größer 0 angeben.'); }
-          portions.push({ name: n.value.trim(), grams });
-        }
+        if (!errs.length && per100 && vals.protein + vals.fat + vals.carbs > 100.5) errs.push('Fett + Carbs + Protein können zusammen nicht über 100 g pro 100 g liegen.');
         const dup = state.foods.find((x) => x.id !== f.id && compareDe(x.name, name) === 0);
         const errEl = el.querySelector('#err');
         if (errs.length) { errEl.hidden = false; errEl.innerHTML = [...new Set(errs)].map(esc).join('<br>'); return; }
@@ -163,7 +162,8 @@ export function openFoodForm(food, onSaved, presetName = '') {
           return;
         }
         const now = Date.now();
-        const saved = { ...f, id: f.id || uid(), name, ...vals, portions, createdAt: f.createdAt || now, updatedAt: now };
+        const { portions, portionName: _pn, ...base } = f; // alte Felder entfernen
+        const saved = { ...base, id: f.id || uid(), name, type, ...vals, ...(per100 ? {} : { portionName }), createdAt: f.createdAt || now, updatedAt: now };
         await db.put('foods', saved);
         await loadFoods();
         close();

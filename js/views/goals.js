@@ -1,4 +1,4 @@
-// Ziele: kcal, Protein, Fett einstellen; Carbs als Rest
+// Ziele: kcal, Fett, Protein einstellen; Carbs als Rest (Anzeige-Reihenfolge kcal, Fett, Carbs, Protein)
 import * as db from '../db.js';
 import { state, toast, render } from '../core.js';
 import { parseNum, numToInput, fmtMacro, carbGoal, DEFAULT_GOALS } from '../util.js';
@@ -18,16 +18,14 @@ export default {
       <form class="card form" id="goal-form" novalidate>
         <svg class="watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
         ${field('kcal', 'Kalorien', g.kcal, 'kcal', 'Zielwert')}
-        <div class="grid2">
-          ${field('protein', 'Protein', g.protein, 'g', 'Mindestziel')}
-          ${field('fat', 'Fett', g.fat, 'g', 'Mindestziel')}
-        </div>
+        ${field('fat', 'Fett', g.fat, 'g', 'Mindestziel')}
         <div class="goal-carbs"><span class="label">Carbs (Rest)</span><span><b id="carbs-out"></b> g</span></div>
+        ${field('protein', 'Protein', g.protein, 'g', 'Mindestziel')}
         <div>
           <div id="split"></div>
           <div class="legend" id="split-legend" style="margin-top:8px"></div>
         </div>
-        <p class="small muted">Carbs = (kcal − 4 × Protein − 9 × Fett) ÷ 4</p>
+        <p class="small muted">Carbs = (kcal − 9 × Fett − 4 × Protein) ÷ 4</p>
         <p class="error" id="err" hidden></p>
         <div class="btn-row"><button type="button" class="btn" id="reset">Standard</button><button type="submit" class="btn primary">Speichern</button></div>
       </form>
@@ -40,16 +38,16 @@ export default {
       const raw = ok ? (v.kcal - 4 * v.protein - 9 * v.fat) / 4 : NaN;
       el.querySelector('#carbs-out').textContent = ok ? fmtMacro(Math.max(0, raw)) : '–';
       const parts = ok ? [
-        { label: 'Protein', value: 4 * v.protein, color: COLORS.protein },
         { label: 'Fett', value: 9 * v.fat, color: COLORS.fat },
         { label: 'Carbs', value: 4 * carbGoal(v), color: COLORS.carbs },
+        { label: 'Protein', value: 4 * v.protein, color: COLORS.protein },
       ] : [];
       const tot = parts.reduce((s, p) => s + p.value, 0) || 1;
       el.querySelector('#split').innerHTML = ok ? splitBar(parts) : '';
       el.querySelector('#split-legend').innerHTML = parts.map((p) => `<span><i style="background:${p.color}"></i>${p.label} ${Math.round((p.value / tot) * 100)} %</span>`).join('');
       const err = el.querySelector('#err');
       err.hidden = !(ok && raw < 0);
-      err.textContent = 'Protein und Fett liefern schon mehr Kalorien als das kcal-Ziel – Carbs wären negativ.';
+      err.textContent = 'Fett und Protein liefern schon mehr Kalorien als das kcal-Ziel – Carbs wären negativ.';
     };
     form.addEventListener('input', update);
     update();
@@ -69,7 +67,7 @@ export default {
       if (bad.length) {
         bad.forEach((k) => form.elements[k].classList.add('invalid'));
         err.hidden = false;
-        err.textContent = 'Bitte gültige Werte eingeben (kcal 500–10.000, Protein 0–600 g, Fett 0–400 g).';
+        err.textContent = 'Bitte gültige Werte eingeben (kcal 500–10.000, Fett 0–400 g, Protein 0–600 g).';
         return;
       }
       if (v.kcal - 4 * v.protein - 9 * v.fat < 0) { err.hidden = false; return; }

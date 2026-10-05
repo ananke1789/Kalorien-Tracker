@@ -7,7 +7,7 @@ export const go = async (page, t) => { await page.click(`.tab[data-tab="${t}"]`)
 export async function foodSteps({ page, step, expect }) {
   const fill = async (name, v) => page.fill(`#sheet-body [name="${name}"]`, v);
 
-  await step('Lebensmittel anlegen (mit Komma, Portion, Plausibilitätshinweis)', async () => {
+  await step('Lebensmittel pro 100 g anlegen (Komma, Plausibilitätshinweis, Feldreihenfolge)', async () => {
     await go(page, 'foods');
     await page.click('.fab');
     await fill('name', 'Proteinriegel');
@@ -18,12 +18,31 @@ export async function foodSteps({ page, step, expect }) {
     expect(await page.isVisible('#plaus'), 'Plausibilitätshinweis fehlt');
     await fill('kcal', '387');
     expect(!(await page.isVisible('#plaus')), 'Hinweis sollte verschwinden');
-    await page.click('#addp');
-    await page.fill('#portions .portion-row:last-child [name=pname]', '1 Riegel');
-    await page.fill('#portions .portion-row:last-child [name=pgrams]', '45');
+    const order = await page.$$eval('#sheet-body .grid2 input', (els) => els.map((e) => e.name).join(','));
+    expect(order === 'kcal,fat,carbs,protein', 'Feldreihenfolge ' + order);
+    expect(!(await page.isVisible('[name=portionName]')), 'Portionsname bei pro 100 g sichtbar');
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     expect((await page.textContent('#food-list')).includes('Proteinriegel'), 'nicht in Liste');
+    expect((await page.textContent('.food:has-text("Proteinriegel") .sub')).startsWith('F 15,5 · C 30,0 · P 33,3'), 'Makrozeile');
+  });
+
+  await step('Lebensmittel pro Portion anlegen (Portionsname in Liste, Plausibilität)', async () => {
+    await page.click('.fab');
+    await fill('name', 'Shake');
+    await page.click('#type-seg [data-type="portion"]');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#err', { state: 'visible' });
+    expect((await page.textContent('#err')).includes('Portionsnamen'), 'Portionsname nicht geprüft');
+    await fill('portionName', '1 Shake');
+    await fill('kcal', '400'); await fill('fat', '1,5'); await fill('carbs', '3'); await fill('protein', '24');
+    expect(await page.isVisible('#plaus'), 'Plausibilität bei Portion fehlt');
+    await fill('kcal', '120');
+    expect(!(await page.isVisible('#plaus')), 'Hinweis sollte verschwinden');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    const row = await page.textContent('.food:has-text("Shake")');
+    expect(row.includes('1 Shake') && row.includes('kcal/1 Shake'), 'Portionsname fehlt: ' + row);
   });
 
   await step('Validierung blockiert leere Eingaben', async () => {
@@ -42,7 +61,7 @@ export async function foodSteps({ page, step, expect }) {
       await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     }
     const names = await page.$$eval('.food .nm', (els) => els.map((e) => e.textContent.trim()));
-    expect(names.join(',') === 'Äpfel,apfelmus,Banane,Proteinriegel', names.join(','));
+    expect(names.join(',').replace(/\s*1 Shake/, '') === 'Äpfel,apfelmus,Banane,Proteinriegel,Shake', names.join(','));
   });
 
   await step('Suche filtert', async () => {
@@ -72,24 +91,29 @@ export async function todaySteps({ page, step, expect }) {
     await tap(page, '[data-add="breakfast"]');
     await page.fill('#pick-q', 'riegel');
     await page.click('.pick:has-text("Proteinriegel")');
-    await page.fill('#sheet-body [name=grams]', '150');
+    await page.fill('#sheet-body [name=amount]', '150');
     const pv = await page.textContent('#preview');
     expect(pv.includes('581') && pv.includes('50,0'), 'Vorschau falsch: ' + pv); // 387*1,5=580,5 -> 581; 33,3*1,5=49,95 -> 50,0
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     expect((await sumV('kcal')) === '581', 'Tagessumme kcal ' + (await sumV('kcal')));
+    const ks = await page.$$eval('.sum-cell', (els) => els.map((e) => e.dataset.k).join(','));
+    expect(ks === 'kcal,fat,carbs,protein', 'Reihenfolge Tagesstand ' + ks);
   });
-  await step('Eintrag als Portion (2 × 1 Riegel = 90 g), zuletzt verwendet oben', async () => {
+  await step('Eintrag als Anzahl Portionen (2 × 1 Shake), zuletzt verwendet oben', async () => {
     await tap(page, '[data-add="snacks"]');
     expect((await page.textContent('.pick-head')).includes('Zuletzt'), 'Zuletzt verwendet fehlt');
-    await page.click('.pick:has-text("Proteinriegel")');
-    await page.click('#mode [data-mode="portion"]');
-    await page.fill('#sheet-body [name=count]', '2');
-    expect((await page.textContent('#preview')).includes('348'), 'Portionsvorschau'); // 387*0,9=348,3
+    await page.click('.pick:has-text("Shake")');
+    expect((await page.inputValue('#sheet-body [name=amount]')) === '1', 'Anzahl nicht 1');
+    await page.fill('#sheet-body [name=amount]', '0,5');
+    expect((await page.textContent('#preview')).includes('60'), 'Halbe Portion');
+    await page.fill('#sheet-body [name=amount]', '2');
+    const pv = await page.textContent('#preview');
+    expect(pv.includes('240') && pv.includes('48,0'), 'Portionsvorschau ' + pv);
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
-    expect((await sumV('kcal')) === '929', 'Summe ' + (await sumV('kcal'))); // 580,5+348,3=928,8
-    expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel · 90 g'), 'Portionstext');
+    expect((await sumV('kcal')) === '821', 'Summe ' + (await sumV('kcal'))); // 580,5+240
+    expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Shake'), 'Portionstext');
   });
   await step('Lebensmittel ändern verfälscht Historie nicht', async () => {
     await go(page, 'foods');
@@ -98,14 +122,14 @@ export async function todaySteps({ page, step, expect }) {
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
     await go(page, 'today');
-    expect((await sumV('kcal')) === '929', 'Snapshot verletzt');
+    expect((await sumV('kcal')) === '821', 'Snapshot verletzt');
   });
   await step('Eintrag bearbeiten, kopieren, löschen', async () => {
     await tap(page, '[data-meal="breakfast"] .entry');
-    await page.fill('#sheet-body [name=grams]', '100');
+    await page.fill('#sheet-body [name=amount]', '100');
     await page.click('#sheet-body button[type=submit]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
-    expect((await sumV('kcal')) === '735', 'Bearbeiten ' + (await sumV('kcal'))); // 387+348,3
+    expect((await sumV('kcal')) === '627', 'Bearbeiten ' + (await sumV('kcal'))); // 387+240
     await tap(page, '[data-meal="breakfast"] .entry');
     await page.click('#copy');
     await page.click('#sheet-body [data-quick="1"]');
@@ -123,7 +147,7 @@ export async function todaySteps({ page, step, expect }) {
   await step('Mahlzeit von gestern übernehmen', async () => {
     await tap(page, '[data-yday="snacks"]');
     await page.waitForTimeout(200);
-    expect((await sumV('kcal')) === '348', 'Übernahme ' + (await sumV('kcal')));
+    expect((await sumV('kcal')) === '240', 'Übernahme ' + (await sumV('kcal')));
     await tap(page, '[data-nav="-1"]');
     await page.waitForTimeout(150);
   });
@@ -146,8 +170,8 @@ export async function goalsStatsSteps({ page, step, expect }) {
   await step('Tagesüberblick: Ringe und Verteilung', async () => {
     await go(page, 'stats');
     expect((await page.$$('.ring')).length === 4, 'Ringe fehlen');
-    // heute 735 kcal von 2000 -> 37 %
-    expect((await page.textContent('.ring:first-child')).includes('37%'), 'kcal-Ring');
+    // heute 627 kcal von 2000 -> 31 %
+    expect((await page.textContent('.ring:first-child')).includes('31%'), 'kcal-Ring');
     await go(page, 'goals');
     await tap(page, '#reset');
     await tap(page, '#goal-form button[type=submit]');
@@ -236,4 +260,66 @@ export async function backupSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [foodSteps, todaySteps, goalsStatsSteps, weekSteps, backupSteps, offlineSteps];
+// Prüft migrierte Lebensmittel und unveränderte Historie
+async function checkMigrated(page, expect, OLD_KCAL_TODAY) {
+  await go(page, 'foods');
+  const names = await page.$$eval('.food .nm', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+  expect(names.join('|') === 'Apfel|Brot 1 Scheibe|Brot (1 Brötchen) 1 Brötchen|Riegel 1 Riegel', 'Lebensmittel: ' + names.join('|'));
+  expect((await page.textContent('.food:has-text("1 Brötchen") .kc')).startsWith('220'), 'Werte 1:1 übernommen');
+  await go(page, 'today');
+  const kcal = (await page.textContent('.sum-cell[data-k="kcal"] .v')).trim();
+  expect(kcal === OLD_KCAL_TODAY, `Historie verändert: ${kcal}`);
+  expect((await page.textContent('[data-meal="snacks"] .entry')).includes('2 × 1 Riegel · 90 g'), 'alter Portionstext');
+}
+
+export async function migrationSteps({ page, step, expect, ctx, URL }) {
+  const { OLD_FOODS, OLD_ENTRIES, OLD_KCAL_TODAY, OLD_BACKUP } = await import('./fixtures-old.js');
+  await step('Migration: DB-Upgrade von Version 1 (inkl. zwei Portionen)', async () => {
+    const c2 = await ctx.browser().newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const p2 = await c2.newPage();
+    p2.setDefaultTimeout(5000);
+    await p2.goto(URL + 'manifest.webmanifest');
+    await p2.evaluate(({ foods, entries }) => new Promise((res, rej) => {
+      const r = indexedDB.open('tagesplan', 1);
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        db.createObjectStore('foods', { keyPath: 'id' });
+        db.createObjectStore('entries', { keyPath: 'id' }).createIndex('date', 'date');
+        db.createObjectStore('meta', { keyPath: 'key' });
+      };
+      r.onsuccess = () => {
+        const t = r.result.transaction(['foods', 'entries'], 'readwrite');
+        foods.forEach((f) => t.objectStore('foods').put(f));
+        entries.forEach((e) => t.objectStore('entries').put(e));
+        t.oncomplete = () => { r.result.close(); res(); };
+        t.onerror = () => rej(t.error);
+      };
+    }), { foods: OLD_FOODS, entries: OLD_ENTRIES });
+    await p2.goto(URL);
+    await p2.waitForSelector('.tab.active');
+    await checkMigrated(p2, expect, OLD_KCAL_TODAY);
+    const raw = await p2.evaluate(async () => (await import('./js/db.js')).getAll('entries'));
+    expect(JSON.stringify(raw.sort((a, b) => a.createdAt - b.createdAt)) === JSON.stringify(OLD_ENTRIES), 'Einträge in der DB verändert');
+    await c2.close();
+  });
+  await step('Migration: Import eines alten Backups (Version 1)', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const file = (await import('node:path')).join(os.tmpdir(), 'tagesplan-alt.json');
+    fs.writeFileSync(file, JSON.stringify(OLD_BACKUP));
+    const c3 = await ctx.browser().newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const p3 = await c3.newPage();
+    p3.setDefaultTimeout(5000);
+    await p3.goto(URL);
+    await go(p3, 'goals');
+    await p3.setInputFiles('#import-file', file);
+    await p3.click('[data-yes]');
+    await p3.waitForTimeout(300);
+    await checkMigrated(p3, expect, OLD_KCAL_TODAY);
+    await go(p3, 'goals');
+    expect((await p3.inputValue('[name=kcal]')) === '2500', 'Ziele nicht importiert');
+    await c3.close();
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, backupSteps, offlineSteps];

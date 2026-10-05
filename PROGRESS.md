@@ -13,7 +13,7 @@
 - [x] h) Design-Feinschliff, README
 
 ## Phase 2 (Lebensmittel-Typen + Training)
-- [ ] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
+- [x] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
 - [ ] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
 - [ ] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
 - [ ] d) Verlauf mit Bearbeiten und Löschen
@@ -22,7 +22,7 @@
 - [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein a.
+Phase 2, Meilenstein b: `js/training/catalog.js` (Übungskatalog) + `js/training/plans.js` (11 Standardpläne), DB v3 mit Stores `exercises`, `plans`, `workouts`, `active`; Tests für Katalog-/Plan-Konsistenz.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -33,6 +33,11 @@ Phase 2, Meilenstein a.
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Phase 2a: Lebensmittel haben `type: 'per100' | 'portion'`; Portion: `portionName`, Werte pro Portion, kein Gramm. Alte `portions[]` entfallen.
+- Einträge: pro 100 g -> `per100` + `grams`; pro Portion -> `perPortion` + `portionName` + `count`. Alte Einträge (`per100` + `grams` + `portion{name,grams,count}`) bleiben unverändert und werden weiter korrekt berechnet/angezeigt.
+- Migration (`migrateFoods` in util.js, idempotent): DB-Upgrade v1->v2 und Import von Backups mit `version < 2`. Weitere Portionen -> neues Lebensmittel "Name (Portion)", ID `<alteId>-p2`, `-p3` …
+- Backup-Format `version: 2`.
+- Nährwert-Reihenfolge überall kcal, Fett, Carbs, Protein (`NUTRIENTS`, `MACROS`, `macroText`). Ziele-Seite: kcal, Fett, Carbs (Rest), Protein.
 - Eintrag speichert Snapshot `per100` + `foodName`; `foodId` bleibt auch nach Löschen des Lebensmittels.
 - Eingaben: Komma oder Punkt als Dezimaltrenner; kein Tausendertrenner bei Eingabe ("2.900" = 2,9).
 - Anzeige: kcal ganzzahlig, Makros 1 Nachkommastelle, Tausenderpunkt.
