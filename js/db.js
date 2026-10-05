@@ -35,7 +35,15 @@ function open() {
         };
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    // Eine ältere App-Version (anderer Tab / installierte App) hält die DB offen -> Upgrade wartet
+    req.onblocked = () => window.dispatchEvent(new Event('tagesplan-db-blocked'));
+    req.onsuccess = () => {
+      const db = req.result;
+      // Künftige Upgrades nicht blockieren: diese Instanz gibt die DB frei und lädt neu
+      db.onversionchange = () => { db.close(); location.reload(); };
+      window.dispatchEvent(new Event('tagesplan-db-ready'));
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
   return dbp;

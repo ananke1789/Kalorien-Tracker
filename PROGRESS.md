@@ -73,6 +73,7 @@ Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nu
 - Woche beginnt Montag; Datumsschlüssel `YYYY-MM-DD` lokal.
 
 ## Bekannte Probleme
+- Behoben (nach Phase 2): Endlos drehendes Zahnrad beim ersten Start einer neuen Version, wenn die alte Version noch in einem Tab/als App offen ist (IndexedDB-Upgrade blockiert). Jetzt: Meldung "Update wartet" + Knöpfe "Neu laden"/"App-Dateien erneuern" (Hinweis nach 10 s), und jede Instanz schließt die DB bei `versionchange` selbst und lädt neu.
 - keine
 
 ## Testhinweise
