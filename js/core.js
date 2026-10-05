@@ -85,13 +85,13 @@ export function onPopState() {
   closeSheet(true);
 }
 
-export function confirmDialog(text, { ok = 'Löschen', danger = true, title = 'Bestätigen' } = {}) {
+export function confirmDialog(text, { ok = 'Löschen', cancel = 'Abbrechen', danger = true, title = 'Bestätigen' } = {}) {
   return new Promise((resolve) => {
     let result = false;
     openSheet({
       title,
       html: `<div class="form"><p>${esc(text)}</p>
-        <div class="btn-row"><button class="btn" data-no>Abbrechen</button>
+        <div class="btn-row"><button class="btn" data-no>${esc(cancel)}</button>
         <button class="btn ${danger ? 'primary' : 'gold'}" data-yes>${esc(ok)}</button></div></div>`,
       onMount(el, close) {
         el.querySelector('[data-no]').onclick = () => close();

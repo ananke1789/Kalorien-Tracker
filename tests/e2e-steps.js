@@ -353,6 +353,24 @@ export async function trainingSteps({ page, step, expect }) {
     await page.click('#sheet-wrap .sheet-head [data-close]');
     await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
   });
+  await step('Training: versehentlich gestartet -> oben abbrechen (mit Rückfrage)', async () => {
+    await tap(page, '[data-plan="lower"]');
+    await page.waitForSelector('.tex');
+    await page.click('.w-top [data-act="discard"]');
+    await page.waitForSelector('[data-yes]');
+    expect((await page.textContent('#sheet-body')).includes('noch nichts eingetragen'), 'Text leer');
+    await page.click('[data-no]'); // "Weiter trainieren"
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect(await page.isVisible('.tex'), 'Training sollte weiterlaufen');
+    await page.fill('[data-f="weight"] >> nth=0', '50');
+    await page.fill('[data-f="reps"] >> nth=0', '10');
+    await page.click('.w-top [data-act="discard"]');
+    expect((await page.textContent('#sheet-body')).includes('1 bereits eingetragenen Satz geht verloren'), 'Text mit Satz');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+    const left = await page.evaluate(async () => { const db = await import('./js/db.js'); return { active: await db.get('active', 'current'), done: (await db.getAll('workouts')).length }; });
+    expect(!left.active && left.done === 0, 'Training nicht sauber abgebrochen');
+  });
   await step('Training Schritt für Schritt: nur aktuelle Übung sichtbar, Fertig speichert und geht weiter', async () => {
     await tap(page, '[data-plan="upper"]');
     await page.waitForSelector('.tex');
