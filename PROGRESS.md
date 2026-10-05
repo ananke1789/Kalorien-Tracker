@@ -17,12 +17,12 @@
 - [x] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
 - [x] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
 - [x] d) Verlauf mit Bearbeiten und Löschen
-- [ ] e) Statistik
+- [x] e) Statistik
 - [ ] f) Plan-Editor und Katalog-Bearbeitung
 - [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein e: Statistik als `js/views/tstats.js` (`registerTrainingSub('stats', …)`, Import in app.js nach training.js): Übungsauswahl gruppiert + Suche (Schlüssel aus `usedKeys` + Katalog), Zeitraum (`RANGES`), Kennzahl Gewicht/Volumen (`statSeries`, `metrics`), SVG-Punktdiagramm mit Linien + Stufenwechsel-Markierung (`stageChanges`), Tipp auf Punkt -> `openWorkoutDetail(w, { onlyKey })` aus thistory.js, Trainings pro Woche (`perWeek`).
+Phase 2, Meilenstein f: Plan-Editor und Katalog-Bearbeitung als `js/views/tplans.js` (`registerTrainingSub('plans', …)`, Import in app.js nach training.js): Planliste (Haupt/Sonder), Plan bearbeiten (Positionen hinzufügen aus Katalog oder neu, entfernen, hoch/runter, Sätze, Wdh.-Bereich, Hinweis, Superset-Gruppe, optional, pro Seite, Variante/Stufe vorauswählen, Abschnitte), "Auf Standard zurücksetzen" (`resetPlan`), Katalog-Übung bearbeiten (Name, Gruppe, Varianten mit Typ/KH/pro Seite/Stufen/Nächste Stufe ab). Speichern über `savePlan`/`saveExercise` in store.js.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -33,6 +33,7 @@ Phase 2, Meilenstein e: Statistik als `js/views/tstats.js` (`registerTrainingSub
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Phase 2e Statistik: Punkte zeitlich skaliert, Linien verbunden, Stufenwechsel als goldene gestrichelte Linie mit Stufenname; Tipp auf Punkt öffnet Details nur der Sätze dieser Übung/Variante. Gemischte KG-Volumen (ohne/mit Zusatzgewicht) bleiben pro Training nach Spezifikation und werden mit Einheit pro Wert gekennzeichnet.
 - Phase 2c: Trainingsansicht `js/views/workout.js` (wiederverwendbar für laufend/bearbeiten). Zahlenfelder speichern per `input` (Debounce 250 ms, beim Ausblenden sofort), ohne Neuaufbau. Strukturänderungen (Satz +/−, Variante, Überspringen) speichern sofort und zeichnen neu.
 - Variante pro Übung (Auswahl oben, gilt für alle Sätze) und pro Satz (Chip im Satzkopf); Stufe ebenso. Bei Variantenwechsel ohne ausgefüllte Sätze werden die Satzzeilen neu erzeugt (z. B. pro Seite).
 - "Wie letztes Mal"-Chip übernimmt die Werte des gleichen Satzindex vom letzten Training dieser Übung/Variante; Platzhalter zeigen sie vorab.

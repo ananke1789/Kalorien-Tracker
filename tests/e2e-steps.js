@@ -480,4 +480,51 @@ export async function historySteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, backupSteps, offlineSteps];
+export async function tstatsSteps({ page, step, expect }) {
+  await step('Statistik: Punktdiagramm, Stufenwechsel, Zeitraum, Kennzahl, Punkt-Details', async () => {
+    // Testhistorie: Klimmzüge (Cali) über 5 Trainings, Stufenwechsel beim 4.
+    await page.evaluate(async () => {
+      const db = await import('./js/db.js');
+      const m = await import('./js/training/model.js');
+      const { DEFAULT_PLANS } = await import('./js/training/plans.js');
+      const { DEFAULT_EXERCISES } = await import('./js/training/catalog.js');
+      const u = await import('./js/util.js');
+      const plan = DEFAULT_PLANS.find((p) => p.id === 'cali');
+      const days = [-150, -40, -20, -10, -3];
+      const list = days.map((d, i) => {
+        const w = m.newWorkout(plan, DEFAULT_EXERCISES, [], u.addDays(u.todayKey(), d));
+        const ex = w.exercises.find((e) => e.exId === 'klimmzuege-weit');
+        ex.sets.forEach((s) => Object.assign(s, { reps: 8 + i, stage: i >= 3 ? 1 : 0, extra: i >= 3 ? 2.5 * (i - 2) : null, form: 4, effort: 3 }));
+        return { ...w, id: 'stat-' + i, status: 'done', finishedAt: i };
+      });
+      await db.putMany('workouts', list);
+      (await import('./js/training/store.js')).loadTraining();
+    });
+    await go(page, 'training');
+    await tap(page, '#t-sub [data-sub="stats"]');
+    await page.waitForSelector('#sp-open');
+    await tap(page, '#sp-open');
+    await page.fill('#sp-q', 'klimm');
+    await page.click('#sheet-body [data-key="klimmzuege-weit/std"]');
+    await page.waitForSelector('.lpt');
+    expect((await page.$$('.lpt')).length === 5, 'Punkte 3 Monate: ' + (await page.$$('.lpt')).length); // -150 fällt raus, + Upper Body von heute (planübergreifend)
+    expect((await page.textContent('.card svg.chart')).includes('Stufe 2'), 'Stufenmarkierung');
+    await tap(page, '#sp-range [data-r="all"]');
+    expect((await page.$$('.lpt')).length === 6, 'Alles');
+    await tap(page, '#sp-range [data-r="4w"]');
+    expect((await page.$$('.lpt')).length === 4, '4 Wochen');
+    // Gewicht = max. Zusatzgewicht; Volumen = Σ kg×Wdh. bzw. Wdh.
+    expect((await page.textContent('.stat-grid')).includes('5,0 kg'), 'Bestwert Gewicht ' + (await page.textContent('.stat-grid')));
+    await tap(page, '#sp-metric [data-m="volume"]');
+    const g = await page.textContent('.stat-grid');
+    expect(g.includes('Wdh.') || g.includes('kg'), 'Volumen-Einheit');
+    await page.click('.lpt >> nth=0');
+    await page.waitForSelector('#sheet-wrap:not([hidden])');
+    const det = await page.textContent('#sheet-body');
+    expect(det.includes('Klimmzüge weit') && det.includes('S4/V3') && !det.includes('Ring Rows'), 'Punkt-Details: ' + det.slice(0, 200));
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    expect((await page.textContent('#t-body')).includes('Trainings pro Woche'), 'Wochenübersicht');
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, tstatsSteps, backupSteps, offlineSteps];

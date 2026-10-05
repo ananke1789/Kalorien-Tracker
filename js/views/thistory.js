@@ -18,12 +18,17 @@ export function workoutDetailHtml(w, onlyKey = null) {
       const r = resolve(w.catalogSnap, ex.exId, s.variant || ex.variant);
       if (!setFilled(s, r.def.type) || (onlyKey && r.key !== onlyKey)) return;
       const n = s.side ? `${ex.sets.slice(0, i + 1).filter((x) => x.side === s.side).length} ${s.side}` : i + 1;
-      const stage = r.def.stages && s.stage != null ? ` · Stufe ${s.stage + 1}: ${r.def.stages[s.stage] || ''}` : '';
+      const stage = r.def.stages && s.stage != null ? ` · Stufe ${s.stage + 1}` : '';
       const variant = cex.variants.length > 1 ? ` · ${(cex.variants.find((v) => v.id === (s.variant || ex.variant)) || {}).name || ''}` : '';
       rows.push(`<div class="dset"><span>Satz ${n}</span><span>${esc(setText(s, r.def.type))}${esc(scaleText(s))}<span class="muted small">${esc(variant + stage)}</span></span></div>`);
     });
     if (ex.skipped && !onlyKey) parts.push(`<div class="list-row"><span><b>${labels[ex.uid] || ''} ${esc(cex.name)}</b></span><span class="muted small">übersprungen</span></div>`);
-    else if (rows.length) parts.push(`<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${labels[ex.uid] || ''} ${esc(cex.name)}</b>${rows.join('')}</div>`);
+    else if (rows.length) {
+      const stages = [...new Set(ex.sets.filter((s) => s.stage != null).map((s) => s.stage))];
+      const def = resolve(w.catalogSnap, ex.exId, ex.variant).def;
+      const stageLine = def.stages && stages.length ? `<div class="small muted">${stages.map((k) => `Stufe ${k + 1}: ${esc(def.stages[k] || '')}`).join(' · ')}</div>` : '';
+      parts.push(`<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${labels[ex.uid] || ''} ${esc(cex.name)}</b>${stageLine}${rows.join('')}</div>`);
+    }
   }
   return `${parts.join('') || '<p class="muted">Keine Sätze eingetragen.</p>'}
     ${w.note && !onlyKey ? `<div class="hint" style="margin-top:8px">${esc(w.note)}</div>` : ''}`;

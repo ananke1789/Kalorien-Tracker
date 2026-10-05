@@ -74,3 +74,55 @@ export function weekBars(days, goal, { color = '#26262a', height = 150, unit = '
     <text x="${W}" y="${gy - 4}" text-anchor="end" font-size="9" font-weight="700" fill="#c8102e">Ziel ${fmt(goal)}${unit}</text>
   </svg>`;
 }
+
+// Punktdiagramm mit Linien (Zeitachse); pts: [{ t (ms), y, id, label }], markers: [{ i, label }] = senkrechte Markierung
+export function lineChart(pts, { unit = '', digits = 0, markers = [], height = 190 } = {}) {
+  const W = 320, H = height, top = 22, bottom = 24, left = 34, right = 10;
+  if (!pts.length) return '';
+  const ys = pts.map((p) => p.y);
+  const max = Math.max(...ys, 1) * 1.12;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const x = (t) => (t1 === t0 ? (left + W - right) / 2 : left + ((t - t0) / (t1 - t0)) * (W - left - right));
+  const y = (v) => top + (H - top - bottom) * (1 - v / max);
+  const fmt = (v) => fmtNum(v, digits);
+  let grid = '';
+  for (const f of [0, 0.5, 1]) {
+    const v = (max / 1.12) * f;
+    grid += `<line x1="${left}" x2="${W - right}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="rgba(38,38,42,${f ? 0.1 : 0.28})"/>
+      <text x="${left - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#5f5b55">${fmt(v)}</text>`;
+  }
+  const mk = markers.map((m) => {
+    const px = x(pts[m.i].t).toFixed(1);
+    return `<line x1="${px}" x2="${px}" y1="${top - 8}" y2="${H - bottom}" stroke="#a8874a" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <text x="${px}" y="${top - 11}" text-anchor="${+px > W / 2 ? 'end' : 'start'}" font-size="9" font-weight="700" fill="#7d6229">▲ ${esc(m.label)}</text>`;
+  }).join('');
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)} ${y(p.y).toFixed(1)}`).join(' ');
+  const dots = pts.map((p) => `<g class="lpt" data-id="${esc(p.id)}" style="cursor:pointer">
+      <circle cx="${x(p.t).toFixed(1)}" cy="${y(p.y).toFixed(1)}" r="14" fill="transparent"/>
+      <circle cx="${x(p.t).toFixed(1)}" cy="${y(p.y).toFixed(1)}" r="5" fill="#fbf8f2" stroke="#c8102e" stroke-width="2.5"/></g>`).join('');
+  const d = (t) => { const dt = new Date(t); return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.`; };
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf${unit ? ' in ' + esc(unit) : ''}">
+    ${grid}${mk}
+    <path d="${path}" fill="none" stroke="#26262a" stroke-width="1.6" stroke-linejoin="round"/>
+    ${dots}
+    <text x="${left}" y="${H - 6}" font-size="9.5" fill="#5f5b55">${d(t0)}</text>
+    ${t1 !== t0 ? `<text x="${W - right}" y="${H - 6}" text-anchor="end" font-size="9.5" fill="#5f5b55">${d(t1)}</text>` : ''}
+  </svg>`;
+}
+
+// kleine Balken (z. B. Trainings pro Woche); bars: [{ label, value }]
+export function miniBars(bars, { height = 90, color = '#26262a' } = {}) {
+  const W = 320, H = height, top = 14, bottom = 16;
+  const max = Math.max(...bars.map((b) => b.value), 1);
+  const bw = W / Math.max(bars.length, 1);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainings pro Woche">
+    <line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="rgba(38,38,42,.28)"/>
+    ${bars.map((b, i) => {
+      const h = ((H - top - bottom) * b.value) / max;
+      const cx = i * bw + bw / 2;
+      return `<rect x="${(cx - bw * 0.3).toFixed(1)}" y="${(H - bottom - h).toFixed(1)}" width="${(bw * 0.6).toFixed(1)}" height="${h.toFixed(1)}" fill="${b.value ? color : 'transparent'}"/>
+        ${b.value ? `<text x="${cx.toFixed(1)}" y="${(H - bottom - h - 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#26262a">${b.value}</text>` : ''}
+        ${b.label ? `<text x="${cx.toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="8.5" fill="#5f5b55">${esc(b.label)}</text>` : ''}`;
+    }).join('')}
+  </svg>`;
+}
