@@ -436,4 +436,48 @@ export async function trainingSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, backupSteps, offlineSteps];
+export async function historySteps({ page, step, expect }) {
+  await step('Verlauf: Liste, Details, Bearbeiten, Löschen', async () => {
+    await go(page, 'training');
+    await tap(page, '#t-sub [data-sub="history"]');
+    await page.waitForSelector('.hist');
+    const row = await page.textContent('.hist');
+    expect(row.includes('Upper Body') && row.includes('5') && row.includes('Sätze'), 'Zeile: ' + row); // 2 Seitheben + 1 Klimmzug + 1 Untere Brust + ... 
+    await tap(page, '.hist');
+    const det = await page.textContent('#sheet-body');
+    expect(det.includes('Seitheben Kabelzug') && det.includes('10 kg × 20') && det.includes('S4/V3') && det.includes('Gute Einheit'), 'Details: ' + det);
+    expect(det.includes('8 Wdh. +2,5 kg') && det.includes('Stufe 1'), 'KG-Details');
+    expect(det.includes('Rudern') && det.includes('übersprungen'), 'übersprungen');
+    await page.click('#wd-edit');
+    await page.waitForSelector('.tex');
+    expect((await page.textContent('.w-head')).includes('Training bearbeiten'), 'Bearbeiten-Modus');
+    await page.fill('.tex:has(.tex-name:text-is("Seitheben Kabelzug")) .set >> nth=0 >> [data-f="weight"]', '12,5');
+    await page.waitForTimeout(400);
+    await tap(page, '[data-act="done-edit"]');
+    await page.waitForSelector('.hist');
+    await tap(page, '.hist');
+    expect((await page.textContent('#sheet-body')).includes('12,5 kg × 20'), 'Bearbeitung nicht gespeichert');
+    await page.click('#wd-del');
+    await page.click('[data-no]');
+    await page.waitForSelector('#wd-del'); // Abbrechen -> Details wieder offen
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect((await page.$$('.hist')).length === 1, 'nicht mehr vorhanden');
+    // zweites Training anlegen und löschen
+    await tap(page, '#t-sub [data-sub="start"]');
+    await tap(page, '[data-plan="lower"]');
+    await page.waitForSelector('.tex');
+    await page.fill('.tex >> nth=0 >> [data-f="weight"] >> nth=0', '60');
+    await page.fill('.tex >> nth=0 >> [data-f="reps"] >> nth=0', '12');
+    await tap(page, '[data-act="finish"]');
+    await page.waitForSelector('.hist');
+    expect((await page.$$('.hist')).length === 2, 'zweites Training fehlt');
+    await tap(page, '.hist:has-text("Lower Body")');
+    await page.click('#wd-del');
+    await page.click('[data-yes]');
+    await page.waitForTimeout(300);
+    expect((await page.$$('.hist')).length === 1, 'Löschen fehlgeschlagen');
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, backupSteps, offlineSteps];

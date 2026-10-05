@@ -16,13 +16,13 @@
 - [x] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
 - [x] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
 - [x] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
-- [ ] d) Verlauf mit Bearbeiten und Löschen
+- [x] d) Verlauf mit Bearbeiten und Löschen
 - [ ] e) Statistik
 - [ ] f) Plan-Editor und Katalog-Bearbeitung
 - [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein d: Verlauf in `js/views/training.js` registrieren (`registerTrainingSub('history', …)`, z. B. neue Datei `js/views/thistory.js`): Liste (Datum, Plan, Anzahl Sätze via `countSets`), Detail-Sheet (Übungen, Varianten, Stufen, Sätze, Skalen, Notiz), Bearbeiten über `renderWorkout(el, w, { mode: 'edit', onDone, onDelete })`, Löschen mit Bestätigung.
+Phase 2, Meilenstein e: Statistik als `js/views/tstats.js` (`registerTrainingSub('stats', …)`, Import in app.js nach training.js): Übungsauswahl gruppiert + Suche (Schlüssel aus `usedKeys` + Katalog), Zeitraum (`RANGES`), Kennzahl Gewicht/Volumen (`statSeries`, `metrics`), SVG-Punktdiagramm mit Linien + Stufenwechsel-Markierung (`stageChanges`), Tipp auf Punkt -> `openWorkoutDetail(w, { onlyKey })` aus thistory.js, Trainings pro Woche (`perWeek`).
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:

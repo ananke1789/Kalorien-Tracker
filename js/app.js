@@ -6,6 +6,7 @@ import foods from './views/foods.js';
 import stats from './views/stats.js';
 import goals from './views/goals.js';
 import training from './views/training.js';
+import './views/thistory.js'; // registriert Verlauf (nach training.js)
 import { loadTraining } from './training/store.js';
 
 Object.assign(views, { today, foods, training, stats, goals });
