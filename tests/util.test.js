@@ -95,4 +95,40 @@ t('Wochensummen', () => {
   assert.equal(w.okDays, 1);
   near(w.perDay[2].tot.kcal, 1000);
 });
-console.log(`OK: ${n} Testgruppen bestanden (inkl. Woche)`);
+t('Reihenfolge der Nährwerte: kcal, Fett, Carbs, Protein', () => {
+  assert.deepEqual(u.NUTRIENTS, ['kcal', 'fat', 'carbs', 'protein']);
+  assert.deepEqual(u.MACROS, ['fat', 'carbs', 'protein']);
+  assert.deepEqual(Object.keys(u.zero()), u.NUTRIENTS);
+  assert.equal(u.macroText({ fat: 1, carbs: 2.25, protein: 30 }), 'F 1,0 · C 2,3 · P 30,0');
+});
+t('Portions-Berechnung', () => {
+  const riegel = { type: 'portion', portionName: '1 Riegel', kcal: 162, fat: 5.4, carbs: 14.4, protein: 14.9 };
+  const v = u.foodValues(riegel, 2);
+  near(v.kcal, 324); near(v.protein, 29.8);
+  near(u.foodValues(riegel, 0.5).fat, 2.7);
+  near(u.foodValues({ type: 'per100', kcal: 400, fat: 10, carbs: 50, protein: 20 }, 150).kcal, 600);
+  const e = { perPortion: u.nutrientsOf(riegel), portionName: '1 Riegel', count: 1.5 };
+  near(u.entryValues(e).carbs, 21.6);
+  // gemischte Tagessumme: Portion + Gramm + altes Eintragsformat (per100 + grams + portion)
+  const old = { per100: { kcal: 400, fat: 10, carbs: 50, protein: 20 }, grams: 90, portion: { name: '1 Riegel', grams: 45, count: 2 } };
+  near(u.sumEntries([e, old]).kcal, 243 + 360);
+});
+t('Migration altes Lebensmittelformat', () => {
+  const old = [
+    { id: 'a', name: 'Apfel', kcal: 52, protein: 0.3, fat: 0.2, carbs: 12, portions: [] },
+    { id: 'b', name: 'Proteinriegel', kcal: 387, protein: 33.3, fat: 15.5, carbs: 30, portions: [{ name: '1 Riegel', grams: 45 }], lastUsed: 5 },
+    { id: 'c', name: 'Brot', kcal: 220, protein: 7.5, fat: 1.6, carbs: 41, portions: [{ name: '1 Scheibe', grams: 50 }, { name: '1 Brötchen', grams: 80 }] },
+    { id: 'd', name: 'Schon neu', type: 'portion', portionName: '1 Shake', kcal: 120, fat: 1, carbs: 3, protein: 24 },
+  ];
+  const m = u.migrateFoods(old);
+  assert.equal(m.length, 5);
+  assert.deepEqual(m[0], { id: 'a', name: 'Apfel', kcal: 52, protein: 0.3, fat: 0.2, carbs: 12, type: 'per100' });
+  assert.equal(m[1].type, 'portion'); assert.equal(m[1].portionName, '1 Riegel'); assert.equal(m[1].kcal, 387);
+  assert.equal(m[1].lastUsed, 5); assert.ok(!('portions' in m[1]));
+  assert.equal(m[2].name, 'Brot'); assert.equal(m[2].portionName, '1 Scheibe'); assert.equal(m[2].kcal, 220);
+  assert.equal(m[3].name, 'Brot (1 Brötchen)'); assert.equal(m[3].portionName, '1 Brötchen');
+  assert.equal(m[3].kcal, 220); assert.equal(m[3].protein, 7.5); assert.notEqual(m[3].id, 'c');
+  assert.deepEqual(m[4], old[3]);
+  assert.deepEqual(u.migrateFoods(m), m); // idempotent
+});
+console.log(`OK: ${n} Testgruppen bestanden`);

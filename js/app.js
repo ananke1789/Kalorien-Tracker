@@ -5,12 +5,17 @@ import today from './views/today.js';
 import foods from './views/foods.js';
 import stats from './views/stats.js';
 import goals from './views/goals.js';
+import training from './views/training.js';
+import './views/thistory.js'; // registriert Verlauf (nach training.js)
+import './views/tstats.js'; // registriert Statistik
+import './views/tplans.js'; // registriert Pläne
+import { loadTraining } from './training/store.js';
 
-Object.assign(views, { today, foods, stats, goals });
+Object.assign(views, { today, foods, training, stats, goals });
 
 async function boot() {
   db.requestPersist();
-  await Promise.all([loadFoods(), loadGoals()]);
+  await Promise.all([loadFoods(), loadGoals(), loadTraining()]);
   document.getElementById('boot').remove();
   for (const t of document.querySelectorAll('.tab')) t.onclick = () => navigate(t.dataset.tab);
   for (const c of document.querySelectorAll('#sheet-wrap [data-close]')) c.onclick = () => closeSheet();

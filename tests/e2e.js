@@ -38,7 +38,7 @@ try {
   await page.waitForSelector('.tab.active');
 
   await step('Navigation über alle Tabs', async () => {
-    for (const t of ['foods', 'stats', 'goals', 'today']) {
+    for (const t of ['foods', 'training', 'stats', 'goals', 'today']) {
       await go(page, t);
       expect(await page.isVisible(`#view-${t}`), `View ${t} nicht sichtbar`);
     }
@@ -48,7 +48,7 @@ try {
   for (const fn of steps.ORDER) await fn({ page, step, expect, ctx, URL });
 
   if (process.env.SHOTS) { // Screenshots: SHOTS=verzeichnis node tests/e2e.js
-    for (const t of ['today', 'foods', 'stats', 'goals']) {
+    for (const t of ['today', 'foods', 'training', 'stats', 'goals']) {
       await go(page, t); await page.waitForTimeout(300);
       await page.screenshot({ path: path.join(process.env.SHOTS, `${t}.png`), fullPage: true });
     }

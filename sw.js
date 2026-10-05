@@ -1,6 +1,6 @@
 // Service Worker: App-Dateien offline aus dem Cache liefern.
 // Bei jeder Änderung an ausgelieferten Dateien CACHE_VERSION erhöhen!
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v11';
 const CACHE = 'tagesplan-' + CACHE_VERSION;
 const FILES = [
   './',
@@ -17,6 +17,15 @@ const FILES = [
   'js/views/stats.js',
   'js/views/goals.js',
   'js/views/backup.js',
+  'js/views/training.js',
+  'js/views/workout.js',
+  'js/views/thistory.js',
+  'js/views/tstats.js',
+  'js/views/tplans.js',
+  'js/training/catalog.js',
+  'js/training/plans.js',
+  'js/training/model.js',
+  'js/training/store.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-192.png',

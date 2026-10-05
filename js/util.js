@@ -6,7 +6,9 @@ export const MEALS = [
   { id: 'dinner', label: 'Abendessen' },
   { id: 'snacks', label: 'Snacks' },
 ];
-export const NUTRIENTS = ['kcal', 'protein', 'fat', 'carbs'];
+// Reihenfolge wie auf Lebensmittelverpackungen
+export const NUTRIENTS = ['kcal', 'fat', 'carbs', 'protein'];
+export const MACROS = ['fat', 'carbs', 'protein'];
 export const NUTRIENT_LABEL = { kcal: 'Kalorien', protein: 'Protein', fat: 'Fett', carbs: 'Carbs' };
 export const DEFAULT_GOALS = { kcal: 2900, protein: 125, fat: 65 };
 
@@ -93,7 +95,7 @@ export function daysBetween(a, b) {
 
 // ---------- Nährwerte ----------
 
-export const zero = () => ({ kcal: 0, protein: 0, fat: 0, carbs: 0 });
+export const zero = () => ({ kcal: 0, fat: 0, carbs: 0, protein: 0 });
 
 // Nährwerte für eine Grammmenge aus Werten pro 100 g
 export function scale(per100, grams) {
@@ -102,7 +104,34 @@ export function scale(per100, grams) {
   for (const k of NUTRIENTS) r[k] = (Number(per100[k]) || 0) * f;
   return r;
 }
-export const entryValues = (e) => scale(e.per100, e.grams);
+// Wert-Vielfaches (z. B. Portionen × Anzahl)
+export function times(vals, n) {
+  const r = zero();
+  for (const k of NUTRIENTS) r[k] = (Number(vals[k]) || 0) * n;
+  return r;
+}
+// Eintrag: Snapshot pro Portion × Anzahl oder pro 100 g × Gramm
+export const entryValues = (e) => (e.perPortion ? times(e.perPortion, e.count) : scale(e.per100, e.grams));
+// Lebensmittel + Menge (Gramm bzw. Anzahl Portionen)
+export const foodValues = (f, amount) => (f.type === 'portion' ? times(f, amount) : scale(f, amount));
+export const nutrientsOf = (f) => ({ kcal: f.kcal, fat: f.fat, carbs: f.carbs, protein: f.protein });
+// Kurzzeile "F 1,0 · C 2,0 · P 3,0"
+export const macroText = (v) => `F ${fmtMacro(v.fat)} · C ${fmtMacro(v.carbs)} · P ${fmtMacro(v.protein)}`;
+
+// Migration altes Lebensmittelformat (portions[] mit Gramm) -> Typ per100 | portion.
+// Werte pro 100 g werden 1:1 als Portionswerte übernommen, weitere Portionen werden eigene Lebensmittel.
+export function migrateFoods(foods) {
+  const out = [];
+  for (const f of foods) {
+    if (f.type === 'per100' || f.type === 'portion') { out.push(f); continue; }
+    const { portions, ...rest } = f;
+    const ps = (portions || []).filter((p) => p && p.name);
+    if (!ps.length) { out.push({ ...rest, type: 'per100' }); continue; }
+    out.push({ ...rest, type: 'portion', portionName: ps[0].name });
+    ps.slice(1).forEach((p, i) => out.push({ ...rest, id: `${f.id}-p${i + 2}`, name: `${f.name} (${p.name})`, type: 'portion', portionName: p.name }));
+  }
+  return out;
+}
 
 export function sum(list) {
   const r = zero();

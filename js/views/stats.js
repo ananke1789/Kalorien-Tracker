@@ -4,10 +4,10 @@ import { state, icon, render, navigate } from '../core.js';
 import { ring, donut, weekBars, COLORS } from '../charts.js';
 import {
   NUTRIENTS, fmtVal, fmtDate, addDays, relDayLabel, sumEntries, fullGoals, goalStatus, planFulfilled,
-  weekDays, isoWeek, todayKey, WEEKDAYS_SHORT, weekData,
+  MACROS, weekDays, isoWeek, todayKey, WEEKDAYS_SHORT, weekData,
 } from '../util.js';
 
-const LABEL = { kcal: 'Kalorien', protein: 'Protein', fat: 'Fett', carbs: 'Carbs' };
+const LABEL = { kcal: 'Kalorien', fat: 'Fett', carbs: 'Carbs', protein: 'Protein' };
 let mode = 'day';
 
 function statusText(k, st, ist, ziel) {
@@ -23,9 +23,9 @@ async function renderDay(el) {
   const tot = sumEntries(entries);
   const g = fullGoals(state.goals);
   const ok = planFulfilled(tot, state.goals);
-  const kp = { protein: tot.protein * 4, fat: tot.fat * 9, carbs: tot.carbs * 4 };
+  const kp = { fat: tot.fat * 9, carbs: tot.carbs * 4, protein: tot.protein * 4 };
   const ks = kp.protein + kp.fat + kp.carbs;
-  const gp = { protein: g.protein * 4, fat: g.fat * 9, carbs: g.carbs * 4 };
+  const gp = { fat: g.fat * 9, carbs: g.carbs * 4, protein: g.protein * 4 };
   const gs = gp.protein + gp.fat + gp.carbs || 1;
   const pct = (v, s) => (s ? Math.round((v / s) * 100) : 0);
   el.innerHTML = `
@@ -50,8 +50,8 @@ async function renderDay(el) {
       <div class="card-head"><span class="label">Kalorienverteilung</span><span class="small muted">aus Makros</span></div>
       <hr class="rule red">
       <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center">
-        ${donut(['protein', 'fat', 'carbs'].map((k) => ({ label: LABEL[k], value: kp[k], color: COLORS[k] })), ks ? fmtVal('kcal', ks) : '–', 'KCAL')}
-        <div style="display:grid;gap:10px">${['protein', 'fat', 'carbs'].map((k) => `
+        ${donut(MACROS.map((k) => ({ label: LABEL[k], value: kp[k], color: COLORS[k] })), ks ? fmtVal('kcal', ks) : '–', 'KCAL')}
+        <div style="display:grid;gap:10px">${MACROS.map((k) => `
           <div><div class="legend"><span><i style="background:${COLORS[k]}"></i><b style="color:var(--ink)">${LABEL[k]}</b></span></div>
           <div style="font-size:22px;font-weight:800;line-height:1.1">${pct(kp[k], ks)} %</div>
           <div class="small muted">Ziel ${pct(gp[k], gs)} %</div></div>`).join('')}</div>
@@ -97,7 +97,7 @@ async function renderWeek(el) {
       <div class="stat-grid" style="margin-top:8px">${NUTRIENTS.map((k) => `<div><span class="label">${LABEL[k]}</span><b>${fmtVal(k, w.avg[k])}${k === 'kcal' ? '' : ' g'}</b>
         <span class="small muted">${k === 'protein' || k === 'fat' ? 'min.' : 'Ziel'} ${fmtVal(k, g[k])}</span></div>`).join('')}</div>
     </div>
-    ${['protein', 'fat', 'carbs'].map((k) => `<div class="card">
+    ${MACROS.map((k) => `<div class="card">
       <div class="card-head"><span class="label">${LABEL[k]} pro Tag</span><span class="small muted">${k === 'carbs' ? 'Ziel' : 'Mindestziel'} ${fmtVal(k, g[k])} g</span></div>
       <hr class="rule red">${bars(k)}</div>`).join('')}`;
   el.querySelectorAll('[data-wnav]').forEach((b) => (b.onclick = () => { state.statsDate = addDays(state.statsDate, +b.dataset.wnav); render(); }));

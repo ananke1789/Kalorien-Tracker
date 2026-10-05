@@ -1,7 +1,8 @@
 // Backup (Export/Import), Backup-Erinnerung und Demo-Daten
 import * as db from '../db.js';
+import { loadTraining } from '../training/store.js';
 import { state, loadFoods, loadGoals, confirmDialog, toast, icon, render } from '../core.js';
-import { todayKey, addDays, fmtDate, daysBetween, dateKey, uid } from '../util.js';
+import { todayKey, addDays, fmtDate, daysBetween, dateKey, uid, nutrientsOf } from '../util.js';
 
 export const BACKUP_DAYS = 14;
 
@@ -38,61 +39,68 @@ async function importFile(file) {
   } catch {
     return toast('Die Datei ist kein gültiges Tagesplan-Backup.');
   }
+  const hasTraining = Array.isArray(data.workouts);
+  const old = !(data.version >= 2);
   const ok = await confirmDialog(
-    `Backup vom ${data.exportedAt ? fmtDate(dateKey(new Date(data.exportedAt))) : '?'} mit ${data.foods.length} Lebensmitteln und ${data.entries.length} Einträgen importieren? ALLE aktuellen Daten werden dabei überschrieben.`,
+    `Backup vom ${data.exportedAt ? fmtDate(dateKey(new Date(data.exportedAt))) : '?'} mit ${data.foods.length} Lebensmitteln, ${data.entries.length} Einträgen`
+    + (hasTraining ? ` und ${data.workouts.length} Trainings` : '') + ' importieren? '
+    + (hasTraining ? 'ALLE aktuellen Daten werden dabei überschrieben.' : 'Ernährungsdaten und Ziele werden überschrieben, deine Trainingsdaten bleiben erhalten (Backup enthält kein Training).')
+    + (old ? ' Das Backup hat das alte Format und wird beim Import umgewandelt.' : ''),
     { ok: 'Überschreiben', title: 'Import' },
   );
   if (!ok) return;
   await db.importAll(data);
   await db.setMeta('lastBackup', new Date().toISOString());
-  await Promise.all([loadFoods(), loadGoals()]);
+  await Promise.all([loadFoods(), loadGoals(), loadTraining()]);
   toast('Backup wiederhergestellt');
   render();
 }
 
 // ---------- Demo-Daten ----------
+// [Name, kcal, Fett, Carbs, Protein, Portionsname] – mit Portionsname = Werte pro Portion, sonst pro 100 g
 const DEMO_FOODS = [
-  ['Haferflocken', 372, 13.5, 7, 58.7, [['1 Portion', 50]]],
-  ['Milch 1,5 %', 47, 3.4, 1.5, 4.9, [['1 Glas', 200]]],
-  ['Banane', 93, 1.2, 0.2, 20, [['1 Stück', 120]]],
-  ['Magerquark', 67, 12, 0.2, 4, [['1 Becher', 250]]],
-  ['Hähnchenbrust', 110, 23, 1.5, 0, []],
-  ['Reis (gekocht)', 130, 2.7, 0.3, 28, [['1 Teller', 200]]],
-  ['Brokkoli', 34, 2.8, 0.4, 4.4, []],
-  ['Vollkornbrot', 220, 7.5, 1.6, 41, [['1 Scheibe', 50]]],
-  ['Gouda', 356, 25, 28, 0.1, [['1 Scheibe', 25]]],
-  ['Olivenöl', 884, 0, 100, 0, [['1 EL', 10]]],
-  ['Eier', 137, 12.5, 9.5, 0.7, [['1 Ei (M)', 58]]],
-  ['Proteinriegel', 360, 33, 12, 32, [['1 Riegel', 45]]],
-  ['Walnüsse', 690, 15, 65, 11, [['1 Handvoll', 30]]],
-  ['Lachs', 202, 20, 13.6, 0, [['1 Filet', 125]]],
-  ['Kartoffeln', 76, 2, 0.1, 16, []],
-  ['Apfel', 54, 0.3, 0.2, 12, [['1 Stück', 150]]],
+  ['Haferflocken', 372, 7, 58.7, 13.5],
+  ['Milch 1,5 %', 47, 1.5, 4.9, 3.4],
+  ['Banane', 112, 0.2, 24, 1.4, '1 Stück'],
+  ['Magerquark', 67, 0.2, 4, 12],
+  ['Hähnchenbrust', 110, 1.5, 0, 23],
+  ['Reis (gekocht)', 130, 0.3, 28, 2.7],
+  ['Brokkoli', 34, 0.4, 4.4, 2.8],
+  ['Vollkornbrot', 110, 0.8, 20.5, 3.8, '1 Scheibe'],
+  ['Gouda', 89, 7, 0, 6.3, '1 Scheibe'],
+  ['Olivenöl', 884, 100, 0, 0],
+  ['Eier', 79, 5.5, 0.4, 7.3, '1 Ei (M)'],
+  ['Proteinriegel', 162, 5.4, 14.4, 14.9, '1 Riegel'],
+  ['Walnüsse', 690, 65, 11, 15],
+  ['Lachs', 252, 17, 0, 25, '1 Filet'],
+  ['Kartoffeln', 76, 0.1, 16, 2],
+  ['Apfel', 81, 0.3, 18, 0.5, '1 Stück'],
+  ['Proteinshake', 120, 1.5, 3, 24, '1 Shake'],
 ];
-// [Mahlzeit, Lebensmittel-Index, Gramm]
+// [Mahlzeit, Lebensmittel-Index, Gramm bzw. Anzahl Portionen]
 const DEMO_DAYS = [
-  [['breakfast', 0, 100], ['breakfast', 1, 300], ['breakfast', 2, 120], ['lunch', 4, 250], ['lunch', 5, 350], ['lunch', 6, 200], ['lunch', 9, 15], ['dinner', 7, 150], ['dinner', 8, 75], ['dinner', 10, 116], ['snacks', 11, 90], ['snacks', 12, 40], ['snacks', 3, 250], ['snacks', 15, 150]],
-  [['breakfast', 0, 80], ['breakfast', 1, 250], ['breakfast', 3, 250], ['lunch', 13, 125], ['lunch', 14, 400], ['lunch', 9, 20], ['dinner', 7, 200], ['dinner', 8, 50], ['snacks', 11, 45], ['snacks', 2, 120], ['snacks', 12, 30]],
-  [['breakfast', 10, 174], ['breakfast', 7, 100], ['lunch', 4, 200], ['lunch', 5, 400], ['lunch', 9, 15], ['dinner', 13, 250], ['dinner', 14, 300], ['dinner', 6, 200], ['snacks', 3, 500], ['snacks', 15, 150]],
+  [['breakfast', 0, 100], ['breakfast', 1, 300], ['breakfast', 2, 1], ['lunch', 4, 250], ['lunch', 5, 350], ['lunch', 6, 200], ['lunch', 9, 15], ['dinner', 7, 3], ['dinner', 8, 3], ['dinner', 10, 2], ['snacks', 11, 2], ['snacks', 12, 40], ['snacks', 3, 250], ['snacks', 15, 1]],
+  [['breakfast', 0, 80], ['breakfast', 1, 250], ['breakfast', 3, 250], ['lunch', 13, 1], ['lunch', 14, 400], ['lunch', 9, 20], ['dinner', 7, 4], ['dinner', 8, 2], ['snacks', 11, 1], ['snacks', 2, 1], ['snacks', 16, 1], ['snacks', 12, 30]],
+  [['breakfast', 10, 3], ['breakfast', 7, 2], ['lunch', 4, 200], ['lunch', 5, 400], ['lunch', 9, 15], ['dinner', 13, 2], ['dinner', 14, 300], ['dinner', 6, 200], ['snacks', 3, 500], ['snacks', 16, 1], ['snacks', 15, 1]],
 ];
 
 async function loadDemo() {
   const now = Date.now();
-  const foods = DEMO_FOODS.map(([name, kcal, protein, fat, carbs, ps], i) => ({
-    id: 'demo-f' + i, name, kcal, protein, fat, carbs, portions: ps.map(([n, g]) => ({ name: n, grams: g })),
-    createdAt: now, updatedAt: now, demo: true,
+  const foods = DEMO_FOODS.map(([name, kcal, fat, carbs, protein, portionName], i) => ({
+    id: 'demo-f' + i, name, type: portionName ? 'portion' : 'per100', ...(portionName ? { portionName } : {}),
+    kcal, fat, carbs, protein, createdAt: now, updatedAt: now, demo: true,
   }));
   const entries = [];
   for (let d = 0; d < 7; d++) {
     const date = addDays(todayKey(), -d);
-    DEMO_DAYS[d % DEMO_DAYS.length].forEach(([meal, fi, grams], j) => {
+    DEMO_DAYS[d % DEMO_DAYS.length].forEach(([meal, fi, amount], j) => {
       if (d === 0 && meal === 'dinner') return; // heute: Abendessen noch offen
       const f = foods[fi];
-      const p = f.portions.find((x) => grams % x.grams === 0);
+      const snap = nutrientsOf(f);
       entries.push({
         id: 'demo-e' + uid(), date, meal, foodId: f.id, foodName: f.name,
-        per100: { kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs },
-        grams, portion: p ? { name: p.name, grams: p.grams, count: grams / p.grams } : null, createdAt: now + d * 100 + j, demo: true,
+        ...(f.type === 'portion' ? { perPortion: snap, portionName: f.portionName, count: amount } : { per100: snap, grams: amount }),
+        createdAt: now + d * 100 + j, demo: true,
       });
     });
   }
