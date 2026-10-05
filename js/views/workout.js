@@ -146,13 +146,14 @@ export function renderWorkout(el, w, opts) {
           <label class="field"><span>Notiz zum Training</span><textarea class="input" data-act="note" placeholder="z. B. Energie, Schlaf, Besonderheiten">${esc(w.note || '')}</textarea></label>
         </div>
         <button class="btn primary block" data-act="finish">${icon('check')}Training abschließen</button>
-        <button class="btn danger block" data-act="discard">Training verwerfen</button>`;
+        <button class="btn danger block" data-act="discard">Training abbrechen (nicht speichern)</button>`;
     }
     el.innerHTML = `
       <div class="card w-head">
         <svg class="watermark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
         <span class="label red">Laufendes Training · ${pos < steps.length ? `Übung ${pos + 1} von ${steps.length}` : 'Abschluss'}</span>
-        <div class="w-title">${esc(w.planName)}</div>
+        <div class="w-top"><div class="w-title">${esc(w.planName)}</div>
+          <button class="chip red" data-act="discard">${icon('close')}Abbrechen</button></div>
         <div class="stepper" id="stepper">${stepper}</div>
         <div class="w-progress" id="w-progress">${progressHtml()}</div>
         ${pos === 0 ? `<label class="field"><span>Datum</span><input class="input" type="date" data-act="date" value="${w.date}"></label>` : ''}
@@ -325,7 +326,11 @@ export function renderWorkout(el, w, opts) {
       await persist(true);
       return opts.onFinish(w);
     } else if (act === 'discard') {
-      if (await confirmDialog('Laufendes Training verwerfen? Alle Eingaben gehen verloren.', { ok: 'Verwerfen' })) opts.onDiscard();
+      const n = workoutProgress(w).filled;
+      const msg = n
+        ? `Training „${w.planName}“ abbrechen? Die ${n} bereits eingetragenen ${n === 1 ? 'Satz geht' : 'Sätze gehen'} verloren und es erscheint nichts im Verlauf.`
+        : `Training „${w.planName}“ abbrechen? Es ist noch nichts eingetragen – es erscheint nichts im Verlauf.`;
+      if (await confirmDialog(msg, { ok: 'Training abbrechen', cancel: 'Weiter trainieren', title: 'Training abbrechen' })) opts.onDiscard();
       return;
     } else if (act === 'done-edit') { await persist(true); return opts.onDone(); }
     else if (act === 'delete') {

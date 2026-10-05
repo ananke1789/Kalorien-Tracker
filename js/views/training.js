@@ -49,7 +49,7 @@ async function renderStart(el) {
         render();
         window.scrollTo(0, 0);
       },
-      onDiscard: async () => { await clearActive(); toast('Training verworfen'); render(); },
+      onDiscard: async () => { await clearActive(); toast('Training abgebrochen'); render(); window.scrollTo(0, 0); },
     });
   }
   const date = tview.startDate || todayKey();
