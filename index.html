@@ -23,6 +23,7 @@
   <main id="main">
     <section class="view" id="view-today" data-view="today"></section>
     <section class="view" id="view-foods" data-view="foods" hidden></section>
+    <section class="view" id="view-training" data-view="training" hidden></section>
     <section class="view" id="view-stats" data-view="stats" hidden></section>
     <section class="view" id="view-goals" data-view="goals" hidden></section>
     <div class="boot" id="boot">
@@ -36,6 +37,9 @@
     </button>
     <button class="tab" data-tab="foods" aria-label="Lebensmittel">
       <svg viewBox="0 0 24 24"><use href="#i-list"/></svg><span>Lebensmittel</span>
+    </button>
+    <button class="tab" data-tab="training" aria-label="Training">
+      <svg viewBox="0 0 24 24"><use href="#i-dumbbell"/></svg><span>Training</span>
     </button>
     <button class="tab" data-tab="stats" aria-label="Auswertung">
       <svg viewBox="0 0 24 24"><use href="#i-chart"/></svg><span>Auswertung</span>
@@ -67,6 +71,10 @@
       <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" stroke-width="3"/></symbol>
       <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 21h18"/><path d="M6 17v-6M11 17V5M16 17v-9M21 17v-3"/></symbol>
       <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></symbol>
+      <symbol id="i-dumbbell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 12h10"/><rect x="3.5" y="7.5" width="3.5" height="9" rx="1"/><rect x="17" y="7.5" width="3.5" height="9" rx="1"/><path d="M2 10v4M22 10v4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l7-7 7 7"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></symbol>
       <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>

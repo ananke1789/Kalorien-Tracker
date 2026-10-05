@@ -15,14 +15,14 @@
 ## Phase 2 (Lebensmittel-Typen + Training)
 - [x] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
 - [x] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
-- [ ] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
+- [x] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
 - [ ] d) Verlauf mit Bearbeiten und Löschen
 - [ ] e) Statistik
 - [ ] f) Plan-Editor und Katalog-Bearbeitung
 - [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein c: Reiter "Training" (index.html Tab + Symbol, `js/views/training.js` mit Unterbereichen Starten/Verlauf/Statistik/Pläne), Startansicht (4 Knöpfe + Sondertraining-Menü, Datum), Trainingsansicht (Blöcke/Supersets/Abschnitte, Satzzeilen je Typ, Skalen, Varianten inkl. eigene, Stufen, letzte Werte, Progressionshinweis, Autosave in Store `active`, Notiz, Abschließen). Logik liegt fertig in `js/training/model.js` + `store.js`.
+Phase 2, Meilenstein d: Verlauf in `js/views/training.js` registrieren (`registerTrainingSub('history', …)`, z. B. neue Datei `js/views/thistory.js`): Liste (Datum, Plan, Anzahl Sätze via `countSets`), Detail-Sheet (Übungen, Varianten, Stufen, Sätze, Skalen, Notiz), Bearbeiten über `renderWorkout(el, w, { mode: 'edit', onDone, onDelete })`, Löschen mit Bestätigung.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -33,6 +33,10 @@ Phase 2, Meilenstein c: Reiter "Training" (index.html Tab + Symbol, `js/views/tr
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Phase 2c: Trainingsansicht `js/views/workout.js` (wiederverwendbar für laufend/bearbeiten). Zahlenfelder speichern per `input` (Debounce 250 ms, beim Ausblenden sofort), ohne Neuaufbau. Strukturänderungen (Satz +/−, Variante, Überspringen) speichern sofort und zeichnen neu.
+- Variante pro Übung (Auswahl oben, gilt für alle Sätze) und pro Satz (Chip im Satzkopf); Stufe ebenso. Bei Variantenwechsel ohne ausgefüllte Sätze werden die Satzzeilen neu erzeugt (z. B. pro Seite).
+- "Wie letztes Mal"-Chip übernimmt die Werte des gleichen Satzindex vom letzten Training dieser Übung/Variante; Platzhalter zeigen sie vorab.
+- "Zuletzt genutzte Variante" = zuletzt mit ausgefüllten Sätzen genutzt.
 - Phase 2b Training: Katalog `js/training/catalog.js` (Übung -> Varianten mit Typ G/KG/Z/E, `stages`, `nextAt`, `perHand`, `perSide`, `progress`). Variante mit `ref` verweist auf eigenständige Übung (z. B. Schulterübung -> Pike Pushups, Untere Brust -> Dips) => gemeinsamer Verlauf/Statistik über Schlüssel `exId/variantId` (`resolve`, `statKey`).
 - Pläne `js/training/plans.js`: Positionen mit `group` (Superset-Buchstabe), Nummern werden berechnet (`itemLabels`). Abschnitte als `{kind:'section'}`.
 - Spezifikation nennt "11 Pläne (3 + 8 Sondertrainings)", beschreibt aber nur 7 Sondertrainings (4a–4g) -> 10 Pläne angelegt. Weitere Pläne können später ergänzt werden.

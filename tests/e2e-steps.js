@@ -322,4 +322,118 @@ export async function migrationSteps({ page, step, expect, ctx, URL }) {
   });
 }
 
-export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, backupSteps, offlineSteps];
+export async function trainingSteps({ page, step, expect }) {
+  const ex = (name) => `.tex:has(.tex-name:text-is("${name}"))`;
+  const setIn = (name, n, f) => `${ex(name)} .set >> nth=${n} >> [data-f="${f}"]`;
+  await step('Training: Startansicht und Sondertraining-Menü', async () => {
+    await go(page, 'training');
+    const btns = await page.$$eval('.big-btn b', (els) => els.map((e) => e.textContent));
+    expect(btns.join('|') === 'Upper Body|Lower Body|Upper Body Calisthenics|Sondertraining', btns.join('|'));
+    await tap(page, '#special');
+    expect((await page.$$('#sheet-body .big-btn')).length === 7, 'Sondertrainings fehlen');
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+  });
+  await step('Training: Upper Body erfassen (G, Skalen, KG, Variante), Autosave + Fortsetzen', async () => {
+    await tap(page, '[data-plan="upper"]');
+    await page.waitForSelector('.tex');
+    const nos = await page.$$eval('.tex-no', (els) => els.map((e) => e.textContent).join(','));
+    expect(nos === '1,2,3,4,5,6,7,8,B1,B2,9,10', 'Nummern ' + nos);
+    expect(await page.isVisible('.superset .label:text("Superset B")'), 'Superset-Block');
+    expect(await page.isVisible('.section-title:has-text("Griffkraft")'), 'Abschnitt');
+    expect((await page.textContent(ex('Seitheben Kabelzug') + ' .tex-target')).includes('2 × 12-20'), 'Ziel');
+    await page.fill(setIn('Seitheben Kabelzug', 0, 'weight'), '10');
+    await page.fill(setIn('Seitheben Kabelzug', 0, 'reps'), '15');
+    await page.click(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="form"][data-v="4"]`);
+    await page.click(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="effort"][data-v="3"]`);
+    // KG: Klimmzüge mit Stufe + Zusatzgewicht
+    await page.fill(setIn('Klimmzüge weit', 0, 'reps'), '8');
+    await page.click(`${ex('Klimmzüge weit')} .set >> nth=0 >> [data-act="extra"]`);
+    await page.fill(setIn('Klimmzüge weit', 0, 'extra'), '2,5');
+    // Variante Untere Brust -> Dip-Maschine (G)
+    await page.selectOption(`${ex('Untere Brust')} select[data-act="variant"]`, 'dip-maschine');
+    await page.waitForSelector(`${ex('Untere Brust')} [data-f="weight"]`);
+    await page.fill(setIn('Untere Brust', 0, 'weight'), '40');
+    await page.fill(setIn('Untere Brust', 0, 'reps'), '10');
+    expect((await page.textContent('#w-progress')).includes('3 / '), 'Fortschritt ' + (await page.textContent('#w-progress')));
+    await page.waitForTimeout(400);
+    await page.reload();
+    await go(page, 'training');
+    await page.waitForSelector('.tex');
+    expect((await page.inputValue(setIn('Seitheben Kabelzug', 0, 'weight'))) === '10', 'Autosave Gewicht');
+    expect((await page.inputValue(setIn('Klimmzüge weit', 0, 'extra'))) === '2,5', 'Autosave Zusatz');
+    expect(await page.isVisible(`${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-k="form"][data-v="4"].on`), 'Skala gespeichert');
+    expect((await page.$eval(`${ex('Untere Brust')} select[data-act="variant"]`, (e) => e.value)) === 'dip-maschine', 'Variante gespeichert');
+  });
+  await step('Training: eigene Variante dauerhaft anlegen', async () => {
+    await page.selectOption(`${ex('Rudern')} select[data-act="variant"]`, '__new');
+    await page.fill('#sheet-body [name=name]', 'T-Bar Rudern');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    expect((await page.$eval(`${ex('Rudern')} select[data-act="variant"] option:checked`, (e) => e.textContent)).includes('T-Bar Rudern'), 'Variante nicht gewählt');
+    const saved = await page.evaluate(async () => (await (await import('./js/db.js')).get('exercises', 'rudern')).variants.map((v) => v.name));
+    expect(saved.includes('T-Bar Rudern'), 'Variante nicht im Katalog');
+  });
+  await step('Training: Satz hinzufügen/entfernen, überspringen, abschließen', async () => {
+    await page.fill(setIn('Seitheben Kabelzug', 1, 'weight'), '10');
+    await page.fill(setIn('Seitheben Kabelzug', 1, 'reps'), '20');
+    await page.fill(setIn('Seitheben Kabelzug', 0, 'reps'), '20');
+    await tap(page, `${ex('Mittlere Brust')} [data-act="add-set"]`);
+    expect((await page.$$(`${ex('Mittlere Brust')} .set`)).length === 3, 'Satz hinzufügen');
+    await tap(page, `${ex('Mittlere Brust')} .set >> nth=2 >> [data-act="del-set"]`);
+    expect((await page.$$(`${ex('Mittlere Brust')} .set`)).length === 2, 'Satz entfernen');
+    await tap(page, `${ex('Rudern')} [data-act="skip"]`);
+    expect(await page.isVisible(`${ex('Rudern')}.skipped`), 'überspringen');
+    await page.fill('[data-act="note"]', 'Gute Einheit');
+    await tap(page, '[data-act="finish"]');
+    await page.waitForSelector('#t-sub [data-sub="history"].on');
+  });
+  await step('Training: letzte Werte, Übernehmen per Tipp, Progressionshinweis, letzte Stufe', async () => {
+    await tap(page, '#t-sub [data-sub="start"]');
+    await tap(page, '[data-plan="upper"]');
+    await page.waitForSelector('.tex');
+    const last = await page.textContent(ex('Seitheben Kabelzug') + ' .tex-last');
+    expect(last.includes('10 kg × 20 · 10 kg × 20'), 'Zuletzt: ' + last);
+    expect((await page.textContent(ex('Seitheben Kabelzug') + ' .tex-prog')).includes('Progression fällig: Gewicht erhöhen'), 'Progression');
+    expect((await page.getAttribute(setIn('Seitheben Kabelzug', 0, 'weight'), 'placeholder')) === '10', 'Platzhalter');
+    await tap(page, `${ex('Seitheben Kabelzug')} .set >> nth=0 >> [data-act="use-last"]`);
+    expect((await page.inputValue(setIn('Seitheben Kabelzug', 0, 'reps'))) === '20', 'Übernehmen');
+    expect((await page.$eval(`${ex('Untere Brust')} select[data-act="variant"]`, (e) => e.value)) === 'dip-maschine', 'zuletzt genutzte Variante');
+    expect(!(await page.textContent(ex('Klimmzüge weit'))).includes('Progression'), 'kein Hinweis bei Klimmzügen');
+    await tap(page, '[data-act="discard"]');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+  });
+  await step('Training: Sondertraining 4g (pro Seite) und 4a (optional eingeklappt, Stern)', async () => {
+    await tap(page, '#special');
+    await page.click('#sheet-body [data-plan="4g"]');
+    await page.waitForSelector('.tex');
+    const heads = await page.$$eval(`${ex('Rückwärts-Ausfallschritte KH')} .set-head b`, (els) => els.map((e) => e.textContent).join(','));
+    expect(heads === 'Satz 1 L,Satz 1 R,Satz 2 L,Satz 2 R', heads);
+    expect((await page.textContent(ex('Seitheben Kurzhantel'))).includes('kg pro Hand'), 'pro Hand');
+    await tap(page, '[data-act="discard"]');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+    await tap(page, '#special');
+    await page.click('#sheet-body [data-plan="4b"]');
+    await page.waitForSelector('.tex');
+    // alle Sätze füllen -> Stern
+    for (const inp of await page.$$('[data-f="weight"]')) await inp.fill('20');
+    for (const inp of await page.$$('[data-f="reps"]')) await inp.fill('12');
+    expect(await page.isVisible('#w-progress .star-status.on'), 'Stern fehlt');
+    await tap(page, '[data-act="discard"]');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+    await tap(page, '#special');
+    await page.click('#sheet-body [data-plan="4a"]');
+    await page.waitForSelector('.tex');
+    expect(await page.isVisible(`${ex('Dead Hang')}.closed`), 'optional nicht eingeklappt');
+    await tap(page, `${ex('Dead Hang')} [data-act="open"]`);
+    expect(await page.isVisible(`${ex('Dead Hang')} [data-f="secs"]`), 'Z-Eingabe');
+    await tap(page, '[data-act="discard"]');
+    await page.click('[data-yes]');
+    await page.waitForSelector('.big-btn');
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, backupSteps, offlineSteps];
