@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/util.test.js && node tests/sw.test.js",
+    "test": "node tests/util.test.js && node tests/training.test.js && node tests/sw.test.js",
     "icons": "node tools/make-icons.js",
     "serve": "python3 -m http.server 8080"
   }

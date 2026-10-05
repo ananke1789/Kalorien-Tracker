@@ -2,7 +2,7 @@
 import { migrateFoods } from './util.js';
 
 const DB_NAME = 'tagesplan';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 export const BACKUP_VERSION = 2;
 let dbp;
 
@@ -19,6 +19,11 @@ function open() {
         s.createIndex('date', 'date');
       }
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+      // v3: Training (Katalog, Pläne, abgeschlossene Trainings, laufendes Training)
+      if (!db.objectStoreNames.contains('exercises')) db.createObjectStore('exercises', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('plans')) db.createObjectStore('plans', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('workouts')) db.createObjectStore('workouts', { keyPath: 'id' }).createIndex('date', 'date');
+      if (!db.objectStoreNames.contains('active')) db.createObjectStore('active', { keyPath: 'id' });
       // v2: Lebensmittel-Typ per100/portion (Einträge bleiben unverändert)
       if (old >= 1 && old < 2) {
         const store = req.transaction.objectStore('foods');

@@ -14,7 +14,7 @@
 
 ## Phase 2 (Lebensmittel-Typen + Training)
 - [x] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
-- [ ] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
+- [x] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
 - [ ] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
 - [ ] d) Verlauf mit Bearbeiten und Löschen
 - [ ] e) Statistik
@@ -22,7 +22,7 @@
 - [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein b: `js/training/catalog.js` (Übungskatalog) + `js/training/plans.js` (11 Standardpläne), DB v3 mit Stores `exercises`, `plans`, `workouts`, `active`; Tests für Katalog-/Plan-Konsistenz.
+Phase 2, Meilenstein c: Reiter "Training" (index.html Tab + Symbol, `js/views/training.js` mit Unterbereichen Starten/Verlauf/Statistik/Pläne), Startansicht (4 Knöpfe + Sondertraining-Menü, Datum), Trainingsansicht (Blöcke/Supersets/Abschnitte, Satzzeilen je Typ, Skalen, Varianten inkl. eigene, Stufen, letzte Werte, Progressionshinweis, Autosave in Store `active`, Notiz, Abschließen). Logik liegt fertig in `js/training/model.js` + `store.js`.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -33,6 +33,13 @@ Phase 2, Meilenstein b: `js/training/catalog.js` (Übungskatalog) + `js/training
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Phase 2b Training: Katalog `js/training/catalog.js` (Übung -> Varianten mit Typ G/KG/Z/E, `stages`, `nextAt`, `perHand`, `perSide`, `progress`). Variante mit `ref` verweist auf eigenständige Übung (z. B. Schulterübung -> Pike Pushups, Untere Brust -> Dips) => gemeinsamer Verlauf/Statistik über Schlüssel `exId/variantId` (`resolve`, `statKey`).
+- Pläne `js/training/plans.js`: Positionen mit `group` (Superset-Buchstabe), Nummern werden berechnet (`itemLabels`). Abschnitte als `{kind:'section'}`.
+- Spezifikation nennt "11 Pläne (3 + 8 Sondertrainings)", beschreibt aber nur 7 Sondertrainings (4a–4g) -> 10 Pläne angelegt. Weitere Pläne können später ergänzt werden.
+- Training speichert `planSnapshot` (Positionen) und `catalogSnap` (verwendete Übungen inkl. Verweisen) -> Historie unabhängig von späteren Änderungen.
+- DB v3: Stores `exercises`, `plans`, `workouts` (Index `date`), `active` (laufendes Training, id `current`). Standardkatalog/-pläne werden beim Laden ergänzt (fehlende IDs), Nutzeränderungen bleiben.
+- Statistik-Volumen: G = Σ kg×Wdh.; KG ohne Zusatzgewicht = Σ Wdh., KG mit Zusatzgewicht = Σ Zusatz-kg×Wdh.; Z = Σ Sekunden.
+- "Plan erfüllt"-Stern im Training: alle Sätze nicht übersprungener, nicht optionaler Übungen ausgefüllt.
 - Phase 2a: Lebensmittel haben `type: 'per100' | 'portion'`; Portion: `portionName`, Werte pro Portion, kein Gramm. Alte `portions[]` entfallen.
 - Einträge: pro 100 g -> `per100` + `grams`; pro Portion -> `perPortion` + `portionName` + `count`. Alte Einträge (`per100` + `grams` + `portion{name,grams,count}`) bleiben unverändert und werden weiter korrekt berechnet/angezeigt.
 - Migration (`migrateFoods` in util.js, idempotent): DB-Upgrade v1->v2 und Import von Backups mit `version < 2`. Weitere Portionen -> neues Lebensmittel "Name (Portion)", ID `<alteId>-p2`, `-p3` …
