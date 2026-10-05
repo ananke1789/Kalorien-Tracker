@@ -2,7 +2,7 @@
 
 **Arbeitszweig:** `claude/amazing-bardeen-vfo9eo` (nur pushen, kein PR – den erstellt der Nutzer)
 
-## Stand
+## Stand (Phase 1, gemergt als PR #1)
 - [x] a) Grundgerüst, Datenmodell (IndexedDB), Navigation (Tab-Leiste)
 - [x] b) Lebensmittel: anlegen, bearbeiten, löschen, alphabetisch, A–Z, Suche, Portionen, Plausibilität
 - [x] c) Heute: Datumsnavigation, Mahlzeiten, Einträge (Gramm/Portion, Vorschau), bearbeiten/löschen/kopieren, Mahlzeit von gestern, Tagesstand
@@ -12,8 +12,17 @@
 - [x] g) Export/Import, Backup-Hinweis (14 Tage), Demo-Daten
 - [x] h) Design-Feinschliff, README
 
+## Phase 2 (Lebensmittel-Typen + Training)
+- [ ] a) Lebensmittel-Typ pro 100 g / pro Portion, neue Nährwert-Reihenfolge (kcal, Fett, Carbs, Protein) überall, DB-Migration + Import-Migration inkl. Tests
+- [ ] b) Training: Datenmodell, Übungskatalog, alle 11 Standardpläne
+- [ ] c) Training starten und erfassen (Auswahl, Sondertraining-Menü, Typen, Varianten, Stufen, Skalen, Autosave, letzte Werte, Progressionshinweis)
+- [ ] d) Verlauf mit Bearbeiten und Löschen
+- [ ] e) Statistik
+- [ ] f) Plan-Editor und Katalog-Bearbeitung
+- [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
+
 ## Nächster Schritt
-Alle Meilensteine erledigt. Optional: Praxistest auf dem Handy, danach PR durch den Nutzer. Mögliche Erweiterungen: Barcode/Favoriten, Wasser, Notizen.
+Phase 2, Meilenstein a.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
