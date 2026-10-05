@@ -28,6 +28,7 @@
     <section class="view" id="view-goals" data-view="goals" hidden></section>
     <div class="boot" id="boot">
       <svg class="gear spin" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
+      <div class="boot-msg" id="boot-msg" hidden></div>
     </div>
   </main>
 
@@ -85,6 +86,35 @@
     </defs>
   </svg>
 
+  <script>
+    // Start-Hilfe: falls die App nicht hochkommt, statt endlosem Zahnrad eine Erklärung + Notfall-Knöpfe
+    (function () {
+      var msg = function (html) {
+        var el = document.getElementById('boot-msg');
+        if (!el || !document.getElementById('boot')) return;
+        el.innerHTML = html + '<div class="btn-row" style="margin-top:14px"><button class="btn" id="boot-reload">Neu laden</button>'
+          + '<button class="btn gold" id="boot-reset">App-Dateien erneuern</button></div>'
+          + '<p class="small muted" style="margin-top:10px">„App-Dateien erneuern“ lädt nur die Programmdateien neu – deine Daten bleiben erhalten.</p>';
+        el.hidden = false;
+        document.getElementById('boot-reload').onclick = function () { location.reload(); };
+        document.getElementById('boot-reset').onclick = function () {
+          var jobs = [];
+          if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+          if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+          Promise.all(jobs).catch(function () {}).then(function () { location.reload(); });
+        };
+      };
+      window.addEventListener('tagesplan-db-blocked', function () {
+        msg('<b>Update wartet</b><p>Tagesplan ist noch in einer älteren Version geöffnet – in einem anderen Browser-Tab oder als installierte App. '
+          + 'Bitte dort schließen (Tab schließen bzw. App aus den zuletzt verwendeten Apps wegwischen). Danach geht es hier automatisch weiter.</p>');
+      });
+      window.addEventListener('tagesplan-db-ready', function () { var el = document.getElementById('boot-msg'); if (el) el.hidden = true; });
+      setTimeout(function () {
+        var el = document.getElementById('boot-msg');
+        if (el && el.hidden) msg('<b>Der Start dauert ungewöhnlich lange.</b><p>Ist Tagesplan noch in einem anderen Tab oder als App geöffnet? Bitte dort schließen. Sonst hilft „Neu laden“ oder „App-Dateien erneuern“.</p>');
+      }, 10000);
+    })();
+  </script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
