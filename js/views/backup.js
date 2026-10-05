@@ -1,5 +1,6 @@
 // Backup (Export/Import), Backup-Erinnerung und Demo-Daten
 import * as db from '../db.js';
+import { loadTraining } from '../training/store.js';
 import { state, loadFoods, loadGoals, confirmDialog, toast, icon, render } from '../core.js';
 import { todayKey, addDays, fmtDate, daysBetween, dateKey, uid, nutrientsOf } from '../util.js';
 
@@ -38,14 +39,19 @@ async function importFile(file) {
   } catch {
     return toast('Die Datei ist kein gültiges Tagesplan-Backup.');
   }
+  const hasTraining = Array.isArray(data.workouts);
+  const old = !(data.version >= 2);
   const ok = await confirmDialog(
-    `Backup vom ${data.exportedAt ? fmtDate(dateKey(new Date(data.exportedAt))) : '?'} mit ${data.foods.length} Lebensmitteln und ${data.entries.length} Einträgen importieren? ALLE aktuellen Daten werden dabei überschrieben.`,
+    `Backup vom ${data.exportedAt ? fmtDate(dateKey(new Date(data.exportedAt))) : '?'} mit ${data.foods.length} Lebensmitteln, ${data.entries.length} Einträgen`
+    + (hasTraining ? ` und ${data.workouts.length} Trainings` : '') + ' importieren? '
+    + (hasTraining ? 'ALLE aktuellen Daten werden dabei überschrieben.' : 'Ernährungsdaten und Ziele werden überschrieben, deine Trainingsdaten bleiben erhalten (Backup enthält kein Training).')
+    + (old ? ' Das Backup hat das alte Format und wird beim Import umgewandelt.' : ''),
     { ok: 'Überschreiben', title: 'Import' },
   );
   if (!ok) return;
   await db.importAll(data);
   await db.setMeta('lastBackup', new Date().toISOString());
-  await Promise.all([loadFoods(), loadGoals()]);
+  await Promise.all([loadFoods(), loadGoals(), loadTraining()]);
   toast('Backup wiederhergestellt');
   render();
 }

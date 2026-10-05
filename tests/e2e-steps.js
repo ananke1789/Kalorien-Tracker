@@ -220,6 +220,8 @@ export async function backupSteps({ page, step, expect }) {
     file = await dl.path();
     const data = JSON.parse((await import('node:fs')).readFileSync(file, 'utf8'));
     expect(data.foods.some((f) => f.name === 'Proteinriegel') && data.entries.length > 0, 'Export unvollständig');
+    expect(data.version === 3, 'Version ' + data.version);
+    expect(data.workouts.length >= 1 && data.exercises.some((x) => x.name === 'Sled Push') && data.plans.length === 10, 'Trainingsdaten fehlen im Export');
   });
   await step('Demo-Daten laden und komplett löschen', async () => {
     await go(page, 'goals');
@@ -245,7 +247,11 @@ export async function backupSteps({ page, step, expect }) {
     expect((await page.textContent('#backup-hint')).includes('20 Tagen'), 'Text');
   });
   await step('Import mit Überschreib-Warnung', async () => {
-    await page.evaluate(async () => (await import('./js/db.js')).put('foods', { id: 'tmp', name: 'Wegwerf', kcal: 1, protein: 0, fat: 0, carbs: 0, portions: [] }));
+    await page.evaluate(async () => {
+      const db = await import('./js/db.js');
+      await db.put('foods', { id: 'tmp', name: 'Wegwerf', type: 'per100', kcal: 1, protein: 0, fat: 0, carbs: 0 });
+      await db.delMany('workouts', (await db.getAll('workouts')).map((w) => w.id)); // wird durch Import wiederhergestellt
+    });
     await go(page, 'goals');
     await page.setInputFiles('#import-file', file);
     await page.waitForSelector('[data-yes]');
@@ -255,6 +261,8 @@ export async function backupSteps({ page, step, expect }) {
     await go(page, 'foods');
     const txt = await page.textContent('#food-list');
     expect(txt.includes('Proteinriegel') && !txt.includes('Wegwerf'), 'Import falsch');
+    const tr = await page.evaluate(async () => { const db = await import('./js/db.js'); return { w: (await db.getAll('workouts')).length, sled: (await db.getAll('exercises')).some((x) => x.name === 'Sled Push') }; });
+    expect(tr.w >= 1 && tr.sled, 'Trainingsdaten nicht wiederhergestellt');
     await go(page, 'today');
     expect(!(await page.$('#backup-hint')), 'Hinweis sollte nach Import weg sein');
   });
@@ -311,11 +319,16 @@ export async function migrationSteps({ page, step, expect, ctx, URL }) {
     const p3 = await c3.newPage();
     p3.setDefaultTimeout(5000);
     await p3.goto(URL);
+    await p3.waitForSelector('.tab.active');
+    await p3.evaluate(async () => (await import('./js/db.js')).put('workouts', { id: 'keep', status: 'done', date: '2026-01-01', planName: 'X', exercises: [], planSnapshot: { items: [] }, catalogSnap: {} }));
     await go(p3, 'goals');
     await p3.setInputFiles('#import-file', file);
+    expect((await p3.textContent('#sheet-body')).includes('Trainingsdaten bleiben erhalten'), 'Hinweis Training fehlt');
     await p3.click('[data-yes]');
     await p3.waitForTimeout(300);
     await checkMigrated(p3, expect, OLD_KCAL_TODAY);
+    const tr = await p3.evaluate(async () => (await (await import('./js/db.js')).getAll('workouts')).length);
+    expect(tr === 1, 'Trainingsdaten bei altem Backup verloren: ' + tr);
     await go(p3, 'goals');
     expect((await p3.inputValue('[name=kcal]')) === '2500', 'Ziele nicht importiert');
     await c3.close();

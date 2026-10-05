@@ -3,7 +3,8 @@ import { migrateFoods } from './util.js';
 
 const DB_NAME = 'tagesplan';
 const DB_VERSION = 3;
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3; // 1: alt (Portionen in Gramm), 2: Lebensmittel-Typen, 3: + Training
+export const TRAINING_STORES = ['exercises', 'plans', 'workouts', 'active'];
 let dbp;
 
 function open() {
@@ -79,20 +80,28 @@ export async function getMeta(key, fallback = null) {
 export const setMeta = (key, value) => put('meta', { key, value });
 
 export async function exportAll() {
-  const [foods, entries, meta] = await Promise.all([getAll('foods'), getAll('entries'), getAll('meta')]);
-  return { app: 'Tagesplan', version: BACKUP_VERSION, exportedAt: new Date().toISOString(), foods, entries, meta };
+  const names = ['foods', 'entries', 'meta', ...TRAINING_STORES];
+  const all = await Promise.all(names.map((n) => getAll(n)));
+  const out = { app: 'Tagesplan', version: BACKUP_VERSION, exportedAt: new Date().toISOString() };
+  names.forEach((n, i) => (out[n] = all[i]));
+  return out;
 }
 
-// Ersetzt alle Daten
+// Ersetzt die Daten. Ältere Backups werden migriert; fehlen Trainingsdaten (Backup < v3),
+// bleiben die vorhandenen Trainingsdaten unverändert erhalten.
 export async function importAll(data) {
   if (!data || !Array.isArray(data.foods) || !Array.isArray(data.entries)) throw new Error('Ungültige Backup-Datei');
   if (!(data.version >= 2)) data = { ...data, foods: migrateFoods(data.foods) }; // altes Format
-  await tx(['foods', 'entries', 'meta'], 'readwrite', (t) => {
-    for (const n of ['foods', 'entries', 'meta']) t.objectStore(n).clear();
+  const training = TRAINING_STORES.filter((n) => Array.isArray(data[n]));
+  const stores = ['foods', 'entries', 'meta', ...training];
+  await tx(stores, 'readwrite', (t) => {
+    for (const n of stores) t.objectStore(n).clear();
     data.foods.forEach((f) => t.objectStore('foods').put(f));
     data.entries.forEach((e) => t.objectStore('entries').put(e));
     (data.meta || []).forEach((m) => m && m.key && t.objectStore('meta').put(m));
+    for (const n of training) data[n].forEach((x) => x && x.id && t.objectStore(n).put(x));
   });
+  return { training: training.length > 0 };
 }
 
 export async function requestPersist() {

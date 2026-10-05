@@ -19,10 +19,10 @@
 - [x] d) Verlauf mit Bearbeiten und Löschen
 - [x] e) Statistik
 - [x] f) Plan-Editor und Katalog-Bearbeitung
-- [ ] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
+- [x] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
 ## Nächster Schritt
-Phase 2, Meilenstein g: Export/Import um `exercises`, `plans`, `workouts`, `active` erweitern (db.js `exportAll`/`importAll`, Backup `version: 3`; alte Backups ohne Training -> Trainingsdaten leeren und Standardkatalog/-pläne neu ergänzen via `loadTraining`), Demo-Daten optional um Beispieltrainings ergänzen, Tests (E2E Backup mit Training, altes Backup), CACHE_VERSION, README + CLAUDE.md aktualisieren.
+Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nutzer. Offen/optional: Demo-Daten um Beispieltrainings ergänzen; ggf. 8. Sondertraining, falls es nachgereicht wird.
 
 ## Plan / Architektur
 - `index.html` (Gerüst, SVG-Symbole), `styles.css`, ES-Module in `js/`:
@@ -33,6 +33,7 @@ Phase 2, Meilenstein g: Export/Import um `exercises`, `plans`, `workouts`, `acti
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Phase 2g Backup `version: 3` enthält zusätzlich `exercises`, `plans`, `workouts`, `active`. Import: Version < 2 -> Lebensmittel-Migration; fehlen Trainingsdaten im Backup, bleiben die vorhandenen Trainingsdaten erhalten (Hinweis im Bestätigungsdialog). Danach `loadTraining()` (ergänzt fehlende Standardpläne/-übungen).
 - Phase 2f Plan-Editor (`js/views/tplans.js`): Änderungen werden automatisch gespeichert (Text mit 300 ms Verzögerung). Positionen auf-/zuklappbar; Hoch/Runter, Entfernen (mit Bestätigung), Übung aus Katalog oder neu, Abschnitte. "Auf Standard zurücksetzen" nur für Standardpläne. Katalog: Name, Gruppe, Varianten (Typ, KH, pro Seite, Stufen, Nächste Stufe ab); Verweis-Varianten nur entfernbar.
 - Phase 2e Statistik: Punkte zeitlich skaliert, Linien verbunden, Stufenwechsel als goldene gestrichelte Linie mit Stufenname; Tipp auf Punkt öffnet Details nur der Sätze dieser Übung/Variante. Gemischte KG-Volumen (ohne/mit Zusatzgewicht) bleiben pro Training nach Spezifikation und werden mit Einheit pro Wert gekennzeichnet.
 - Phase 2c: Trainingsansicht `js/views/workout.js` (wiederverwendbar für laufend/bearbeiten). Zahlenfelder speichern per `input` (Debounce 250 ms, beim Ausblenden sofort), ohne Neuaufbau. Strukturänderungen (Satz +/−, Variante, Überspringen) speichern sofort und zeichnen neu.
