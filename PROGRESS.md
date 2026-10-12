@@ -21,7 +21,17 @@
 - [x] f) Plan-Editor und Katalog-Bearbeitung
 - [x] g) Export/Import erweitern, Tests, CACHE_VERSION, README und CLAUDE.md
 
+## Phase 3 (Rezeptdatenbank aus dem Ideen-Paket)
+- [x] r1) Daten (data/recipes.json, data/ingredients.json) + Logik `js/recipes/model.js` + Datentest (alle Kombinationen je Stufe)
+- [x] r2) Lebensmittel-Reiter: Umschalter Meine/Rezepte/Einkauf/Verlauf, Rezeptliste mit Filtern, Detail mit Stufenwahl + Zubereitung, „Eintragen“ in Heute
+- [x] r3) Favoriten + Rezept-Verlauf
+- [x] r4) Einkaufsliste (Rezepte für die nächsten Tage wählen, Zutaten zusammenrechnen, abhaken)
+- [x] r5) E2E-Tests, SW-Cache, README/PROGRESS, PR
+
 ## Nächster Schritt
+Phase 3 abgeschlossen (PR offen). Optional später: „Zufälliger Tag“, eigene Rezepte, Rezepte als eigenständige App (siehe `docs/rezept-idee/`).
+
+<!-- alt: -->
 Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nutzer. Offen/optional: Demo-Daten um Beispieltrainings ergänzen; ggf. 8. Sondertraining, falls es nachgereicht wird.
 
 ## Plan / Architektur
@@ -33,6 +43,11 @@ Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nu
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Rezept-UI `js/views/recipes.js` (im Reiter Lebensmittel, Umschalter Meine/Rezepte/Einkauf/Verlauf in `foods.js`). Einkaufsliste: geplante Rezepte (Stufe + Portionen) -> Zutaten nach Schlüssel summiert (g/ml/Stück), abhakbar, teilen/kopieren; gespeichert in `meta.shoppingList`. Favoriten `meta.recipeFavs`, Einstellungen `meta.recipePrefs`.
+- E2E-Test „Verlauf“ war datumsabhängig (prüfte auf „5“, die zufällig im Datum stand) – präzisiert auf „4 Sätze“.
+- Phase 3 Rezepte: Quelle `data/recipes.json` + `data/ingredients.json` (unverändert aus dem Ideen-Paket, Spezifikation + Python-Generator unter `docs/rezept-idee/`). Rezepte sind feste Daten (nicht editierbar), offline über den Service Worker. Nutzerdaten (Stufe, Filter, Favoriten, Einkaufsliste) in Store `meta` -> automatisch im Backup, kein DB-Upgrade nötig.
+- Eintragen eines Rezepts = normaler Portionseintrag in Heute (`perPortion` = Makros der Stufe, `recipeId`, `recipeLevel`); Rezept-Verlauf wird aus diesen Einträgen gebildet. Ziele/manuelles Tracking unverändert.
+- Stufe: globale Rezept-Einstellung (Vorschlag nächstliegend zum kcal-Ziel), im Rezept pro Rezept umschaltbar.
 - Laufendes Training abbrechen: Knopf "Abbrechen" oben in jedem Schritt (neben dem Plannamen) und im Abschluss-Schritt. Rückfrage nennt die Anzahl bereits eingetragener Sätze; "Weiter trainieren" bricht ab, "Training abbrechen" löscht das laufende Training (Store `active`), nichts landet im Verlauf. `confirmDialog` hat dafür eine Option `cancel` (Beschriftung des Abbrechen-Knopfs).
 - Laufendes Training Schritt für Schritt (Wunsch: wenig Arbeitsspeicher, Absturzsicherheit): Es wird nur der aktuelle Schritt (Einzelübung oder Superset) gerendert; Schrittleiste oben zum Springen, letzter Schritt = Abschluss (Notiz, Übersicht, Abschließen/Verwerfen). "Fertig – weiter" markiert die Übungen (`doneAt`), speichert sofort (`saveActive`) und springt zur nächsten offenen Übung danach. Position `w.pos` wird mitgespeichert -> nach Absturz/Neustart geht es dort weiter (Toast "Training fortgesetzt – weiter bei …"). Zahlenfelder speichern zusätzlich sofort beim Verlassen des Feldes. Logik: `workoutSteps`, `stepDone`, `resumeStep`, `completeStep` in model.js. Bearbeiten im Verlauf zeigt weiterhin alle Übungen.
 - Phase 2g Backup `version: 3` enthält zusätzlich `exercises`, `plans`, `workouts`, `active`. Import: Version < 2 -> Lebensmittel-Migration; fehlen Trainingsdaten im Backup, bleiben die vorhandenen Trainingsdaten erhalten (Hinweis im Bestätigungsdialog). Danach `loadTraining()` (ergänzt fehlende Standardpläne/-übungen).

@@ -296,6 +296,34 @@ main { padding: 12px 16px calc(var(--tab-h) + var(--sab) + 96px); max-width: 640
 .split { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 8px; }
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; }
 
+/* ---------- Rezepte ---------- */
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 1px 0 3px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips .chip { flex: 0 0 auto; min-height: 40px; }
+.chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.rcard { display: grid; gap: 4px; text-align: left; width: 100%; padding: 14px; }
+.rc-name { font-size: 18px; font-weight: 800; line-height: 1.25; }
+.rc-name .star-status { width: 16px; height: 16px; vertical-align: -1px; }
+.rc-macros { font-size: 13.5px; color: var(--ink-2); }
+.rc-macros b { color: var(--ink); }
+.rc-meta { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#rd .list-row b, .shop-item b { white-space: nowrap; }
+ol.steps { margin: 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.45; }
+.shop-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
+.shop-item .nm { flex: 1; }
+.shop-item .box { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--line-2); display: grid; place-items: center; flex: 0 0 auto; }
+.shop-item .box svg { width: 16px; height: 16px; }
+.shop-item.done { color: var(--ink-3); }
+.shop-item.done .nm, .shop-item.done b { text-decoration: line-through; }
+.shop-item.done .box { background: var(--gold); border-color: var(--gold); color: #fff; }
+.plan-row { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 14px; border-bottom: 1px solid var(--line); }
+.plan-row:last-child, .shop-item:last-child { border-bottom: 0; }
+.pr-main { flex: 1; min-width: 0; border: 0; background: transparent; text-align: left; padding: 6px 0; min-height: 48px; }
+.pr-main .nm { font-weight: 700; }
+.pr-main .sub { font-size: 12.5px; color: var(--ink-2); }
+.pr-count { display: flex; align-items: center; gap: 0; }
+.pr-count .icon-btn { min-width: 40px; font-size: 22px; font-weight: 700; }
+
 /* ---------- Training ---------- */
 .stepper { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
 .stepper::-webkit-scrollbar { display: none; }
