@@ -6,6 +6,7 @@ Eine Progressive Web App (PWA) zum täglichen Erfassen von Kalorien, Fett, Carbs
 
 - **Heute:** Datumsnavigation (auch rückwirkend), vier Mahlzeiten, Einträge in Gramm oder als Portion × Anzahl mit Live-Vorschau, Bearbeiten/Löschen/Kopieren, „Von gestern“ übernehmen, Tagesstand mit Ist, Ziel und „noch offen“.
 - **Lebensmittel:** alphabetische Liste (deutsche Sortierung) mit A–Z-Schnellsprung und Suche. Jedes Lebensmittel ist entweder „pro 100 g“ (Eintrag in Gramm) oder „pro Portion“ (z. B. „1 Riegel“, Eintrag als Anzahl, auch 0,5). Plausibilitätshinweis. Nährwerte überall in der Reihenfolge kcal, Fett, Carbs, Protein.
+- **Rezepte (im Reiter Lebensmittel):** 90 Rezepte für Frühstück, Mittag- und Abendessen in 6 Ernährungsformen (Standard, Vegetarisch, Vegan, Low Carb, Ketogen, Ray Peat), jeweils mit fertigen Mengen für 5 Kalorienstufen (1750–3200 kcal). Filter, Express-Gerichte, Favoriten, Zubereitung zum Aufklappen, „In Heute eintragen“, Rezept-Verlauf und Einkaufsliste (Rezepte für die nächsten Tage planen, Zutaten werden zusammengerechnet). Deine eigenen Lebensmittel und Ziele bleiben davon unberührt.
 - **Training:** Starten (Upper Body, Lower Body, Upper Body Calisthenics, Sondertraining 4a–4g), Erfassen mit Supersets und Abschnitten, Satztypen Gewicht / Körpergewicht (Stufe, optional Zusatzgewicht) / Zeit / Erledigt, Skalen für Sauberkeit und Nähe zum Muskelversagen, Varianten (auch eigene), letzte Werte und Progressionshinweis, Schritt-für-Schritt-Erfassung: immer nur die aktuelle Übung bzw. das Superset, „Fertig – weiter“ speichert sofort; nach einem Absturz geht es bei der nächsten Übung weiter. Verlauf mit Bearbeiten/Löschen, Statistik pro Übung und Variante (Gewicht, Volumen, Stufenwechsel, Trainings pro Woche), Plan-Editor und Übungskatalog.
 - **Auswertung:** Tagesüberblick mit Fortschrittsringen und Kalorienverteilung; Wochenüberblick mit Balkendiagrammen, Ziellinie, Tagesdurchschnitt und Tagen mit erfülltem Plan.
 - **Ziele:** kcal, Fett und Protein frei einstellbar (Standard 2900 kcal / min. 65 g Fett / min. 125 g Protein), Carbs als Rest. Export/Import als JSON (inkl. Training), Backup-Hinweis nach 14 Tagen, Demo-Daten.
@@ -52,6 +53,7 @@ node tools/make-icons.js           # App-Icons neu erzeugen
 | `js/core.js` | Zustand, Navigation, Bottom-Sheet, Dialoge |
 | `js/charts.js` | SVG-Diagramme (Ringe, Donut, Wochenbalken) |
 | `js/views/*.js` | Heute, Lebensmittel, Auswertung, Ziele, Backup/Demo; Training: `training.js` (Start), `workout.js` (Erfassen/Bearbeiten), `thistory.js`, `tstats.js`, `tplans.js` |
+| `js/recipes/`, `data/` | Rezeptdatenbank: `model.js` (Logik), `store.js`; Daten `data/recipes.json`, `data/ingredients.json` (Quelle + Spezifikation: `docs/rezept-idee/`) |
 | `js/training/` | `catalog.js` (Übungskatalog), `plans.js` (Standardpläne), `model.js` (Logik, testbar), `store.js` (Speicher) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA |
 

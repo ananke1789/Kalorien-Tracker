@@ -23,13 +23,13 @@
 
 ## Phase 3 (Rezeptdatenbank aus dem Ideen-Paket)
 - [x] r1) Daten (data/recipes.json, data/ingredients.json) + Logik `js/recipes/model.js` + Datentest (alle Kombinationen je Stufe)
-- [ ] r2) Lebensmittel-Reiter: Umschalter Meine/Rezepte/Einkauf/Verlauf, Rezeptliste mit Filtern, Detail mit Stufenwahl + Zubereitung, „Eintragen“ in Heute
-- [ ] r3) Favoriten + Rezept-Verlauf
-- [ ] r4) Einkaufsliste (Rezepte für die nächsten Tage wählen, Zutaten zusammenrechnen, abhaken)
-- [ ] r5) E2E-Tests, SW-Cache, README/PROGRESS, PR
+- [x] r2) Lebensmittel-Reiter: Umschalter Meine/Rezepte/Einkauf/Verlauf, Rezeptliste mit Filtern, Detail mit Stufenwahl + Zubereitung, „Eintragen“ in Heute
+- [x] r3) Favoriten + Rezept-Verlauf
+- [x] r4) Einkaufsliste (Rezepte für die nächsten Tage wählen, Zutaten zusammenrechnen, abhaken)
+- [x] r5) E2E-Tests, SW-Cache, README/PROGRESS, PR
 
 ## Nächster Schritt
-Phase 3, r2: `js/recipes/store.js` (Daten per fetch laden, Einstellungen/Favoriten/Einkaufsliste in `meta`) und `js/views/recipes.js`; in `foods.js` Umschalter Meine/Rezepte/Einkauf/Verlauf.
+Phase 3 abgeschlossen (PR offen). Optional später: „Zufälliger Tag“, eigene Rezepte, Rezepte als eigenständige App (siehe `docs/rezept-idee/`).
 
 <!-- alt: -->
 Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nutzer. Offen/optional: Demo-Daten um Beispieltrainings ergänzen; ggf. 8. Sondertraining, falls es nachgereicht wird.
@@ -43,6 +43,8 @@ Phase 2 abgeschlossen. Nächstes: Praxistest auf dem Handy, dann PR durch den Nu
 - `sw.js`, `manifest.webmanifest`, `icons/` (per `tools/make-icons.js` erzeugt)
 
 ## Entscheidungen
+- Rezept-UI `js/views/recipes.js` (im Reiter Lebensmittel, Umschalter Meine/Rezepte/Einkauf/Verlauf in `foods.js`). Einkaufsliste: geplante Rezepte (Stufe + Portionen) -> Zutaten nach Schlüssel summiert (g/ml/Stück), abhakbar, teilen/kopieren; gespeichert in `meta.shoppingList`. Favoriten `meta.recipeFavs`, Einstellungen `meta.recipePrefs`.
+- E2E-Test „Verlauf“ war datumsabhängig (prüfte auf „5“, die zufällig im Datum stand) – präzisiert auf „4 Sätze“.
 - Phase 3 Rezepte: Quelle `data/recipes.json` + `data/ingredients.json` (unverändert aus dem Ideen-Paket, Spezifikation + Python-Generator unter `docs/rezept-idee/`). Rezepte sind feste Daten (nicht editierbar), offline über den Service Worker. Nutzerdaten (Stufe, Filter, Favoriten, Einkaufsliste) in Store `meta` -> automatisch im Backup, kein DB-Upgrade nötig.
 - Eintragen eines Rezepts = normaler Portionseintrag in Heute (`perPortion` = Makros der Stufe, `recipeId`, `recipeLevel`); Rezept-Verlauf wird aus diesen Einträgen gebildet. Ziele/manuelles Tracking unverändert.
 - Stufe: globale Rezept-Einstellung (Vorschlag nächstliegend zum kcal-Ziel), im Rezept pro Rezept umschaltbar.

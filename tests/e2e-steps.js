@@ -508,9 +508,9 @@ export async function historySteps({ page, step, expect }) {
   await step('Verlauf: Liste, Details, Bearbeiten, Löschen', async () => {
     await go(page, 'training');
     await tap(page, '#t-sub [data-sub="history"]');
-    await page.waitForSelector('.hist');
-    const row = await page.textContent('.hist');
-    expect(row.includes('Upper Body') && row.includes('5') && row.includes('Sätze'), 'Zeile: ' + row); // 2 Seitheben + 1 Klimmzug + 1 Untere Brust + ... 
+    await page.waitForSelector('.hist .nm');
+    const row = (await page.textContent('.hist')).replace(/\s+/g, ' ');
+    expect(row.includes('Upper Body') && /4\s*Sätze/.test(row), 'Zeile: ' + row); // 2 Seitheben + 1 Klimmzug + 1 Untere Brust
     await tap(page, '.hist');
     const det = await page.textContent('#sheet-body');
     expect(det.includes('Seitheben Kabelzug') && det.includes('10 kg × 20') && det.includes('S4/V3') && det.includes('Gute Einheit'), 'Details: ' + det);
@@ -689,4 +689,106 @@ export async function planEditorSteps({ page, step, expect }) {
   });
 }
 
-export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, tstatsSteps, planEditorSteps, backupSteps, offlineSteps];
+export async function recipeSteps({ page, step, expect }) {
+  const mode = async (m) => { await tap(page, `#food-mode [data-mode="${m}"]`); await page.waitForSelector('#r-body > *'); await page.waitForTimeout(150); };
+  const card = '.rcard:has-text("Skyr-Müsli mit Apfel")';
+  await step('Rezepte: Liste, Filter (Mahlzeit, Ernährungsform, Express, Suche), Stufe', async () => {
+    await go(page, 'foods');
+    expect(await page.isVisible('#food-mode [data-mode="mine"].on'), 'Umschalter fehlt');
+    await mode('recipes');
+    await tap(page, '#r-slot [data-slot="fruehstueck"]');
+    await tap(page, '#r-diet [data-diet="alle"]');
+    expect((await page.$$('.rcard')).length === 30, 'Frühstück alle: ' + (await page.$$('.rcard')).length);
+    await tap(page, '#r-diet [data-diet="vegan"]');
+    expect((await page.$$('.rcard')).length === 5, 'vegan');
+    await tap(page, '#r-diet [data-diet="alle"]');
+    await tap(page, '#r-express');
+    const ex = await page.$$eval('.rcard', (els) => els.map((e) => e.textContent.includes('Express')));
+    expect(ex.length > 0 && ex.every(Boolean), 'Express-Filter');
+    await tap(page, '#r-express');
+    await page.selectOption('#r-level', '2600');
+    await page.waitForTimeout(150);
+    await page.fill('#r-q', 'skyr-müsli');
+    expect((await page.$$('.rcard')).length === 1 && (await page.textContent(card)).includes('652 kcal'), 'Suche/Stufe 2600');
+    const name = await page.$eval(`${card} .rc-name`, (e) => getComputedStyle(e).fontWeight);
+    expect(+name >= 700, 'Name nicht fett');
+  });
+  await step('Rezept-Detail: Stufe pro Rezept, Zubereitung aufklappen, Favorit', async () => {
+    await page.click(card);
+    await page.waitForSelector('#rd-level');
+    expect((await page.textContent('#rd .preview')).includes('652'), 'Detail Stufe 2600');
+    await page.click('#rd-level [data-l="1750"]');
+    expect((await page.textContent('#rd .preview')).includes('440') && (await page.textContent('#rd')).includes('240 g'), 'Stufe 1750 Mengen');
+    expect(!(await page.$('ol.steps')), 'Zubereitung sollte zu sein');
+    await page.click('#rd-steps');
+    expect((await page.$$('ol.steps li')).length === 4, 'Zubereitung');
+    await page.click('#rd-fav');
+    await page.waitForSelector('#rd-fav.gold');
+  });
+  await step('Rezept in Heute eintragen (Stufe 1750, 2 Portionen) – zählt im Tagesstand', async () => {
+    await page.click('#rd-book');
+    await page.waitForSelector('#bk-meal');
+    expect(await page.isVisible('#bk-meal [data-m="breakfast"].on'), 'Mahlzeit vorausgewählt');
+    await page.fill('#sheet-body [name=count]', '2');
+    await page.click('#sheet-body button[type=submit]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    await go(page, 'today');
+    const e = await page.textContent('[data-meal="breakfast"]');
+    expect(e.includes('Skyr-Müsli mit Apfel') && e.includes('2 × 1 Portion · Stufe 1750') && e.includes('880 kcal'), 'Eintrag: ' + e.replace(/\s+/g, ' ').slice(0, 300));
+    await go(page, 'foods');
+    await mode('recipes');
+    await tap(page, '#r-favs');
+    await page.fill('#r-q', '');
+    await page.waitForTimeout(150);
+    expect((await page.$$('.rcard')).length === 1, 'Favoritenfilter');
+    await tap(page, '#r-favs');
+  });
+  await step('Einkaufsliste: Rezepte planen, Portionen, zusammenrechnen, abhaken, gespeichert', async () => {
+    await page.fill('#r-q', 'skyr-müsli');
+    await page.click(card);
+    await page.click('#rd-level [data-l="1750"]');
+    await page.click('#rd-shop');
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    await mode('shop');
+    expect((await page.$$('.plan-row')).length === 1, 'geplantes Rezept');
+    await tap(page, '.plan-row [data-inc]');
+    await page.waitForTimeout(200);
+    expect((await page.textContent('.shop-item:has-text("Skyr natur")')).includes('480 g'), 'Skyr 2 × 240 g: ' + (await page.textContent('#r-body')).replace(/\s+/g, ' ').slice(0, 300));
+    await tap(page, '#sh-add');
+    await page.click('#pk-slot [data-slot="fruehstueck"]');
+    await page.fill('#pk-q', 'skyr-müsli');
+    await page.click('#pk-list .pick');
+    await page.waitForSelector('#sheet-wrap', { state: 'hidden' });
+    await page.waitForTimeout(200);
+    expect((await page.$$('.plan-row')).length === 2, 'zweites Rezept');
+    const skyr = await page.textContent('.shop-item:has-text("Skyr natur")'); // + Stufe aus Einstellung (2600: 150 g)
+    expect(skyr.includes('630 g'), 'Summe ' + skyr);
+    expect((await page.textContent('#r-body')).includes('Zimt'), 'Gewürze');
+    await tap(page, '.shop-item:has-text("Skyr natur")');
+    await page.waitForSelector('.shop-item.done:has-text("Skyr natur")', { timeout: 2000 });
+    await page.reload();
+    await go(page, 'foods');
+    await page.waitForSelector('#food-mode');
+    await mode('shop');
+    await page.waitForSelector('.shop-item.done:has-text("Skyr natur")', { timeout: 2000 });
+    expect((await page.$$('.plan-row')).length === 2, 'nicht gespeichert');
+  });
+  await step('Rezept-Verlauf zeigt eingetragene Rezepte', async () => {
+    await mode('hist');
+    const t = await page.textContent('#r-body');
+    expect(t.includes('Skyr-Müsli mit Apfel') && t.includes('Stufe 1750') && t.includes('2 Portionen'), 'Verlauf: ' + t.replace(/\s+/g, ' ').slice(0, 200));
+    await tap(page, '[data-rid]');
+    await page.waitForSelector('#rd-level [data-l="1750"].on');
+    await page.click('#sheet-wrap .sheet-head [data-close]');
+    await mode('shop');
+    await tap(page, '#sh-clear');
+    await page.click('[data-yes]');
+    await page.waitForTimeout(200);
+    expect((await page.$$('.plan-row')).length === 0, 'Liste leeren');
+    await tap(page, '#food-mode [data-mode="mine"]');
+    await page.waitForSelector('#food-list');
+  });
+}
+
+export const ORDER = [migrationSteps, foodSteps, todaySteps, goalsStatsSteps, weekSteps, trainingSteps, historySteps, tstatsSteps, planEditorSteps, recipeSteps, backupSteps, offlineSteps];

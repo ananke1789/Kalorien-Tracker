@@ -1,6 +1,7 @@
 // Lebensmittel: alphabetische Liste, A–Z, Suche, Formular (Typ pro 100 g oder pro Portion)
 import * as db from '../db.js';
 import { state, loadFoods, openSheet, confirmDialog, toast, icon, emptyState, render } from '../core.js';
+import { FOOD_MODES, renderRecipeMode } from './recipes.js';
 import { parseNum, fmtKcal, numToInput, plausibility, letterOf, norm, uid, esc, compareDe, macroText, NUTRIENTS } from '../util.js';
 
 let query = '';
@@ -50,12 +51,22 @@ function bindAz(el) {
   rail.addEventListener('click', (e) => jump(e.clientX, e.clientY));
 }
 
+let mode = 'mine'; // Meine | Rezepte | Einkauf | Verlauf
+
 export default {
-  render(el) {
-    el.innerHTML = `
+  async render(el) {
+    const modes = `<div class="seg" id="food-mode">${FOOD_MODES.map(([id, l]) => `<button data-mode="${id}" class="${id === mode ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    const bindModes = () => el.querySelectorAll('#food-mode button').forEach((b) => (b.onclick = () => { mode = b.dataset.mode; render(); window.scrollTo(0, 0); }));
+    if (mode !== 'mine') {
+      el.innerHTML = `${modes}<div id="r-body" class="view" style="animation:none"></div>`;
+      bindModes();
+      return renderRecipeMode(el.querySelector('#r-body'), mode, (m) => { mode = m; render(); window.scrollTo(0, 0); });
+    }
+    el.innerHTML = `${modes}
       <div class="section-title"><span class="label">Lebensmittel</span><span class="muted small" id="food-count"></span></div>
       <div class="search">${icon('search')}<input class="input" id="food-q" type="search" placeholder="Suchen…" autocomplete="off" value="${esc(query)}"></div>
       <div class="food-list" id="food-list"></div>`;
+    bindModes();
     const list = el.querySelector('#food-list');
     const draw = () => {
       const foods = state.foods.filter((f) => matches(f, query));
