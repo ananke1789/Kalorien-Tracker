@@ -10,3 +10,5 @@ Lies zu Beginn jeder Sitzung zuerst PROGRESS.md und die README. Wenn der Nutzer 
 - Nährwert-Reihenfolge überall: kcal, Fett, Carbs, Protein (`NUTRIENTS`, `MACROS`).
 - Training: reine Logik in `js/training/model.js` (mit Node testen), Standardkatalog/-pläne in `catalog.js`/`plans.js`; Pläne verweisen nur auf Katalog-IDs. Neue Training-Unterbereiche über `registerTrainingSub` und Import in `app.js` nach `training.js`.
 - Icons neu erzeugen: `node tools/make-icons.js`.
+
+- Der Ordner `finanzen/` ist eine **separate App** (Finanzplaner) und gehört nicht zum Kalorien-Tracker. Dort gelten `finanzen/CLAUDE.md` und `finanzen/PROGRESS.md`; nichts zwischen beiden Apps teilen.
